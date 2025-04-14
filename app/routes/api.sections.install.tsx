@@ -1,11 +1,20 @@
 import { json } from "@remix-run/node";
 import type { ActionFunction } from "@remix-run/node";
-import { authenticate } from "../shopify.server";
+import { authenticate } from "../../shopify.server";
 import fs from 'fs/promises';
 import path from 'path';
 
 interface RequestBody {
   sectionId: string;
+}
+
+interface Theme {
+  id: number;
+  role: string;
+}
+
+interface ThemesResponse {
+  data: Theme[];
 }
 
 export const action: ActionFunction = async ({ request }) => {
@@ -20,11 +29,12 @@ export const action: ActionFunction = async ({ request }) => {
     );
 
     // Get the active theme
-    const { themes } = await admin.rest.get({
+    const response = await admin.rest.get({
       path: 'themes',
     });
+    const { data: themes } = response as unknown as ThemesResponse;
     
-    const activeTheme = themes.data.find((theme: { role: string }) => theme.role === 'main');
+    const activeTheme = themes.find((theme) => theme.role === 'main');
 
     if (!activeTheme) {
       throw new Error('No active theme found');
@@ -46,4 +56,9 @@ export const action: ActionFunction = async ({ request }) => {
     console.error('Error installing section:', error);
     return json({ error: (error as Error).message }, { status: 500 });
   }
-}; 
+};
+
+// Add default export for Remix route
+export default function InstallSection() {
+  return null;
+} 
