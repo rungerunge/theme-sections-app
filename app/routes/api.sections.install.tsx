@@ -1,11 +1,16 @@
 import { json } from "@remix-run/node";
+import type { ActionFunction } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
 import fs from 'fs/promises';
 import path from 'path';
 
-export const action = async ({ request }) => {
+interface RequestBody {
+  sectionId: string;
+}
+
+export const action: ActionFunction = async ({ request }) => {
   const { admin } = await authenticate.admin(request);
-  const { sectionId } = await request.json();
+  const { sectionId } = await request.json() as RequestBody;
 
   try {
     // Read the section template
@@ -19,7 +24,7 @@ export const action = async ({ request }) => {
       path: 'themes',
     });
     
-    const activeTheme = themes.data.find(theme => theme.role === 'main');
+    const activeTheme = themes.data.find((theme: { role: string }) => theme.role === 'main');
 
     if (!activeTheme) {
       throw new Error('No active theme found');
@@ -39,6 +44,6 @@ export const action = async ({ request }) => {
     return json({ success: true });
   } catch (error) {
     console.error('Error installing section:', error);
-    return json({ error: error.message }, { status: 500 });
+    return json({ error: (error as Error).message }, { status: 500 });
   }
 }; 

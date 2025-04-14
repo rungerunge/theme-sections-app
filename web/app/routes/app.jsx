@@ -4,15 +4,23 @@ import { AppProvider } from "@shopify/shopify-app-remix/react";
 import { authenticate } from "../shopify.server";
 
 export const loader = async ({ request }) => {
-  await authenticate.admin(request);
-  return json({ apiKey: process.env.SHOPIFY_API_KEY || "" });
+  const { admin, session } = await authenticate.admin(request);
+  
+  return json({
+    apiKey: process.env.SHOPIFY_API_KEY || "",
+    shopOrigin: session.shop,
+  });
 };
 
 export default function App() {
-  const { apiKey } = useLoaderData();
+  const { apiKey, shopOrigin } = useLoaderData();
 
   return (
-    <AppProvider isEmbeddedApp apiKey={apiKey}>
+    <AppProvider 
+      isEmbeddedApp
+      apiKey={apiKey}
+      shopOrigin={shopOrigin}
+    >
       <Outlet />
     </AppProvider>
   );
