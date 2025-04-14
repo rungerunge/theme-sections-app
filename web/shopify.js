@@ -1,6 +1,6 @@
 import "@shopify/shopify-api/adapters/node";
 import { LATEST_API_VERSION, shopifyApp } from "@shopify/shopify-app-express";
-import { restResources } from "@shopify/shopify-api/rest/admin/2023-04";
+import { restResources } from "@shopify/shopify-api/rest/admin/2024-01";
 import { MemorySessionStorage } from "@shopify/shopify-app-session-storage-memory";
 
 const shopify = shopifyApp({

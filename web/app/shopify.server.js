@@ -1,5 +1,5 @@
 import { shopifyApp } from "@shopify/shopify-app-remix";
-import { restResources } from "@shopify/shopify-api/rest/admin/2023-04";
+import { restResources } from "@shopify/shopify-api/rest/admin/2024-01";
 
 const shopify = shopifyApp({
   apiKey: process.env.SHOPIFY_API_KEY,
