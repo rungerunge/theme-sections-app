@@ -2,11 +2,11 @@
   "name": "okayscale-sections",
   "version": "1.0.0",
   "description": "Internal Shopify app for managing custom sections",
-  "main": "server/index.js",
+  "main": "server.js",
   "scripts": {
     "dev": "remix dev",
     "build": "remix build",
-    "start": "remix-serve build"
+    "start": "cross-env NODE_ENV=production node server.js"
   },
   "keywords": [
     "shopify",
@@ -16,9 +16,9 @@
   "author": "OkayScale",
   "license": "ISC",
   "dependencies": {
-    "@remix-run/node": "^2.4.1",
-    "@remix-run/react": "^2.4.1",
-    "@remix-run/serve": "^2.4.1",
+    "@remix-run/express": "^2.0.1",
+    "@remix-run/node": "^2.0.1",
+    "@remix-run/react": "^2.0.1",
     "@shopify/app-bridge": "^3.7.9",
     "@shopify/app-bridge-react": "^3.7.9",
     "@shopify/polaris": "^11.1.2",
@@ -28,10 +28,14 @@
     "dotenv": "^16.3.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "remix": "^2.4.1"
+    "cross-env": "^7.0.3",
+    "compression": "^1.7.4"
   },
   "devDependencies": {
-    "@remix-run/dev": "^2.4.1",
+    "@remix-run/dev": "^2.0.1",
     "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

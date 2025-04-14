@@ -1,14 +1,30 @@
-import { createRequestHandler } from "@remix-run/express";
-import express from "express";
-import * as build from "@remix-run/dev/server-build";
+const express = require("express");
+const compression = require("compression");
+const { createRequestHandler } = require("@remix-run/express");
+const path = require("path");
 
 const app = express();
-app.use(express.static("public"));
 
+// Use compression middleware
+app.use(compression());
+
+// Handle asset requests
+app.use(
+  "/build",
+  express.static(path.join(process.cwd(), "public/build"), {
+    immutable: true,
+    maxAge: "1y",
+  })
+);
+
+// Handle public file requests
+app.use(express.static("public", { maxAge: "1h" }));
+
+// Handle all other requests with the Remix handler
 app.all(
   "*",
   createRequestHandler({
-    build,
+    build: require("./build"),
     mode: process.env.NODE_ENV,
   })
 );
