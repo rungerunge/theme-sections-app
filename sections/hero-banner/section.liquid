@@ -1,0 +1,159 @@
+{% comment %}
+  Hero Banner section template
+  Author: OkayScale
+{% endcomment %}
+
+{% schema %}
+{
+  "name": "Hero Banner",
+  "tag": "section",
+  "class": "section",
+  "settings": [
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "Background Image"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "default": "Hero Banner",
+      "label": "Heading"
+    },
+    {
+      "type": "richtext",
+      "id": "text",
+      "default": "<p>Add your promotional message or banner text here</p>",
+      "label": "Text"
+    },
+    {
+      "type": "text",
+      "id": "button_label",
+      "default": "Shop Now",
+      "label": "Button Label"
+    },
+    {
+      "type": "url",
+      "id": "button_link",
+      "label": "Button Link"
+    },
+    {
+      "type": "select",
+      "id": "text_alignment",
+      "options": [
+        { "value": "left", "label": "Left" },
+        { "value": "center", "label": "Center" },
+        { "value": "right", "label": "Right" }
+      ],
+      "default": "center",
+      "label": "Text Alignment"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "default": "#ffffff",
+      "label": "Text Color"
+    },
+    {
+      "type": "range",
+      "id": "height",
+      "min": 300,
+      "max": 800,
+      "step": 50,
+      "default": 500,
+      "unit": "px",
+      "label": "Banner Height"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Hero Banner",
+      "category": "Image"
+    }
+  ]
+}
+{% endschema %}
+
+<div class="hero-banner" style="height: {{ section.settings.height }}px; text-align: {{ section.settings.text_alignment }};">
+  {% if section.settings.image != blank %}
+    <img src="{{ section.settings.image | img_url: 'master' }}" alt="{{ section.settings.heading | escape }}" class="hero-banner__image">
+  {% else %}
+    <div class="hero-banner__placeholder"></div>
+  {% endif %}
+  
+  <div class="hero-banner__content" style="color: {{ section.settings.text_color }};">
+    {% if section.settings.heading != blank %}
+      <h2 class="hero-banner__heading">{{ section.settings.heading }}</h2>
+    {% endif %}
+    
+    {% if section.settings.text != blank %}
+      <div class="hero-banner__text">{{ section.settings.text }}</div>
+    {% endif %}
+    
+    {% if section.settings.button_label != blank and section.settings.button_link != blank %}
+      <a href="{{ section.settings.button_link }}" class="hero-banner__button button">
+        {{ section.settings.button_label }}
+      </a>
+    {% endif %}
+  </div>
+</div>
+
+<style>
+  .hero-banner {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    margin-bottom: 30px;
+  }
+  
+  .hero-banner__image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 1;
+  }
+  
+  .hero-banner__placeholder {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #f2f2f2;
+    z-index: 1;
+  }
+  
+  .hero-banner__content {
+    position: relative;
+    z-index: 2;
+    padding: 30px;
+    max-width: 600px;
+    text-shadow: 0 0 10px rgba(0,0,0,0.3);
+  }
+  
+  .hero-banner__heading {
+    margin-bottom: 15px;
+    font-size: 32px;
+  }
+  
+  .hero-banner__text {
+    margin-bottom: 25px;
+    font-size: 18px;
+  }
+  
+  .hero-banner__button {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #000;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 4px;
+    font-weight: bold;
+    text-shadow: none;
+  }
+</style> 
