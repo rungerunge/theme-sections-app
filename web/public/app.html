@@ -3,386 +3,102 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Section Store</title>
-  <link rel="stylesheet" href="https://unpkg.com/@shopify/polaris@11.1.2/build/esm/styles.css">
+  <title>Theme Sections App</title>
   <style>
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
       margin: 0;
       padding: 0;
-    }
-    .section-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-      gap: 16px;
-      padding: 20px;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    .section-card {
-      border-radius: 8px;
-      box-shadow: 0 0 0 1px rgba(63, 63, 68, 0.05), 0 1px 3px 0 rgba(63, 63, 68, 0.15);
-      overflow: hidden;
-      background: white;
-    }
-    .section-image {
-      width: 100%;
-      height: 180px;
-      margin-bottom: 1rem;
-      overflow: hidden;
-      border-radius: 8px;
-      border: 1px solid #ddd;
-    }
-    .section-image img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      transition: transform 0.3s ease;
-    }
-    .section-image:hover img {
-      transform: scale(1.05);
-    }
-    .section-content {
-      padding: 16px;
-    }
-    .section-title {
-      margin: 0 0 8px 0;
-      font-size: 16px;
-      font-weight: 600;
-    }
-    .section-description {
-      margin: 0 0 16px 0;
-      color: #6d7175;
-      font-size: 14px;
-    }
-    .section-tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 16px;
-    }
-    .tag {
-      background-color: #f4f6f8;
-      border-radius: 4px;
-      padding: 4px 8px;
-      font-size: 12px;
-      color: #202223;
-    }
-    .install-button {
-      width: 100%;
-      padding: 8px 16px;
-      background-color: #5c6ac4;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      font-weight: 500;
-      cursor: pointer;
-    }
-    .install-button:hover {
-      background-color: #4959bd;
+      background: #f6f6f7;
     }
     .header {
-      background-color: #fff;
-      padding: 20px;
-      border-bottom: 1px solid #ddd;
-    }
-    .header h1 {
-      margin: 0;
-      font-size: 28px;
-      color: #212b36;
-    }
-    .header p {
-      margin: 8px 0 0 0;
-      color: #6d7175;
+      background: #000;
+      color: white;
+      padding: 2rem 0;
+      text-align: center;
     }
     .container {
-      max-width: 1200px;
+      max-width: 960px;
       margin: 0 auto;
-    }
-    .result-panel {
-      display: none;
-      margin-top: 16px;
-      padding: 16px;
-      background-color: #f4f6f8;
-      border-radius: 4px;
-    }
-    .success {
-      background-color: #e3f1df;
-      border-left: 4px solid #50b83c;
-    }
-    .error {
-      background-color: #fbeae5;
-      border-left: 4px solid #de3618;
+      padding: 0 1rem;
     }
     .auth-banner {
-      background-color: #fdf8e3;
-      border-left: 4px solid #eec200;
-      padding: 16px;
-      margin: 20px;
-      border-radius: 4px;
-      max-width: 1200px;
-      margin: 20px auto;
+      max-width: 600px;
+      margin: 2rem auto;
+      padding: 2rem;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      text-align: center;
     }
-    .auth-button {
-      background-color: #5c6ac4;
-      color: white;
-      border: none;
-      padding: 10px 15px;
-      border-radius: 4px;
-      font-weight: 500;
-      cursor: pointer;
-      text-decoration: none;
+    .install-button {
       display: inline-block;
-      margin-top: 10px;
-    }
-    .theme-select {
-      width: 100%;
-      padding: 8px;
-      margin-bottom: 16px;
-      border: 1px solid #c4cdd5;
+      background: #008060;
+      color: white;
+      padding: 1rem 2rem;
       border-radius: 4px;
-    }
-    .connect-status {
+      text-decoration: none;
       font-weight: 500;
-      margin-bottom: 10px;
+      margin-top: 1rem;
     }
-    .hidden {
-      display: none;
+    .install-button:hover {
+      background: #006e52;
+    }
+    .note {
+      color: #637381;
+      font-size: 0.875rem;
+      margin-top: 1rem;
     }
   </style>
 </head>
 <body>
   <div class="header">
     <div class="container">
-      <h1>Section Store</h1>
+      <h1>Theme Sections App</h1>
       <p>Add custom sections to your Shopify theme with one click</p>
     </div>
   </div>
 
-  <!-- Authentication Banner -->
-  <div id="auth-banner" class="auth-banner">
-    <h2>Connect to your Shopify store</h2>
-    <p>Choose how you want to connect to your Shopify store:</p>
+  <div class="auth-banner">
+    <h2>Install Theme Sections App</h2>
+    <p>Connect this app to your Shopify store to start adding custom sections to your theme.</p>
     
-    <div style="margin-top: 16px;">
-      <h3>Option 1: Install via Shopify App Store</h3>
-      <p>Install this app through the Shopify App Store to get automatic authentication and access to your themes.</p>
-      <a href="/auth?shop=" class="auth-button" id="install-link" onclick="return updateShopUrl()">Install App</a>
-      <div style="margin-top: 8px;">
-        <input type="text" id="shop-input" placeholder="your-store.myshopify.com" style="padding: 8px; width: 250px; border: 1px solid #c4cdd5; border-radius: 4px;">
-      </div>
-      <p>Enter your shop domain above and click "Install App"</p>
-    </div>
-    
-    <div style="margin-top: 24px; border-top: 1px solid #ddd; padding-top: 16px;">
-      <h3>Option 2: Select from pre-configured stores</h3>
-      <p>If your store has been pre-configured by the OkayScale team, select it from the list below:</p>
-      <div style="display: flex; margin-top: 12px;">
-        <select id="store-select" style="flex: 1; padding: 8px; border: 1px solid #c4cdd5; border-radius: 4px 0 0 4px; border-right: none;">
-          <option value="">Select a store...</option>
-          <option value="okayscaledemo.myshopify.com">OkayScale Demo Store</option>
-          <!-- Add more stores as needed -->
-        </select>
-        <button onclick="selectStore()" class="auth-button" style="border-radius: 0 4px 4px 0;">Connect</button>
-      </div>
-      <p class="note" style="margin-top: 12px; font-size: 12px; color: #637381;">
-        Note: If your store isn't listed, please use Option 1 or contact the OkayScale support team.
-      </p>
-    </div>
-  </div>
-
-  <!-- Store Connection Info (initially hidden) -->
-  <div id="store-info" class="auth-banner hidden">
-    <div id="connected-store" class="connect-status">Connected to: <span id="shop-name">-</span></div>
-    <label for="theme-select">Select theme for installation:</label>
-    <select id="theme-select" class="theme-select">
-      <option value="">Loading themes...</option>
-    </select>
-  </div>
-  
-  <div class="section-grid">
-    <div class="section-card">
-      <div class="section-image">
-        <img src="/section-previews/test-section.png" alt="Test Section" onerror="this.src='https://burst.shopifycdn.com/photos/flatlay-iron-skillet-with-meat-vegetables.jpg?width=500'; this.onerror=null;">
-      </div>
-      <div class="section-content">
-        <h3 class="section-title">Test Section</h3>
-        <p class="section-description">A simple test section with configurable heading and content. Use this to experiment with the section capabilities.</p>
-        <div class="section-tags">
-          <span class="tag">Test</span>
-          <span class="tag">Simple</span>
-          <span class="tag">Configurable</span>
-        </div>
-        <button id="install-test-section" class="install-button">Preview & Install</button>
-        <div id="result" class="result-panel">
-          <h4>Installation Result</h4>
-          <pre id="result-content"></pre>
-        </div>
-      </div>
-    </div>
-    <div class="section-card">
-      <div class="section-image">
-        <img src="/section-preview/todo-list" alt="Todo List Section Preview" />
-      </div>
-      <div class="section-content">
-        <h3 class="section-title">Todo List</h3>
-        <p class="section-description">Add a customizable todo list to your store</p>
-        <div class="section-tags">
-          <span class="tag">Interactive</span>
-          <span class="tag">Utility</span>
-        </div>
-        <button class="install-button" data-section="todo-list">Install Section</button>
-        <div class="result-panel" id="todo-result">
-          <h4>Installation Result</h4>
-          <pre id="todo-result-content"></pre>
-        </div>
-      </div>
+    <div id="install-container">
+      <input 
+        type="text" 
+        id="shop-input" 
+        placeholder="your-store.myshopify.com" 
+        style="padding: 12px; width: 250px; border: 1px solid #c4cdd5; border-radius: 4px; margin-bottom: 1rem;"
+      >
+      <br>
+      <a href="#" class="install-button" onclick="handleInstall(); return false;">Install App</a>
     </div>
   </div>
 
   <script>
-    let selectedThemeId = null;
-    let connectedShop = null;
-    
-    // Function to handle section installation
-    function installSection(sectionId) {
-      // Check if we have a shop connected
-      if (!connectedShop) {
-        alert('Please connect to a Shopify store first');
-        document.getElementById('auth-banner').scrollIntoView();
-        return;
-      }
+    function handleInstall() {
+      const shopInput = document.getElementById('shop-input');
+      let shop = shopInput.value.trim();
       
-      // Show loading state
-      const button = document.querySelector(`button[data-section="${sectionId}"]`);
-      const originalText = button.textContent;
-      button.textContent = 'Installing...';
-      button.disabled = true;
-      
-      // Call the API to install the section
-      fetch('/api/sections/install', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          sectionId: sectionId,
-          shop: connectedShop,
-          themeId: selectedThemeId
-        })
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          alert(`Section "${sectionId}" successfully installed to theme "${data.themeName}"`);
-        } else {
-          alert(`Error: ${data.error || 'Unknown error'}`);
-          console.error('Installation error:', data);
-        }
-      })
-      .catch(error => {
-        alert('Error installing section: ' + error.message);
-        console.error('Installation error:', error);
-      })
-      .finally(() => {
-        // Reset button state
-        button.textContent = originalText;
-        button.disabled = false;
-      });
-    }
-    
-    // Add click event listeners to all install buttons
-    document.addEventListener('DOMContentLoaded', function() {
-      // Setup installation buttons
-      document.querySelectorAll('.install-button').forEach(button => {
-        button.addEventListener('click', function() {
-          const sectionId = this.getAttribute('data-section');
-          installSection(sectionId);
-        });
-      });
-      
-      // Other initialization code...
-    });
-    
-    // Function to select a store
-    function selectStore() {
-      const shopDomain = document.getElementById('store-select').value;
-      
-      if (!shopDomain) {
-        alert('Please select a store');
-        return;
-      }
-      
-      fetch(`/api/connect-store?shop=${shopDomain}`)
-        .then(response => response.json())
-        .then(data => {
-          if (data.success) {
-            connectedShop = shopDomain;
-            document.getElementById('auth-banner').classList.add('hidden');
-            document.getElementById('store-info').classList.remove('hidden');
-            document.getElementById('shop-name').textContent = shopDomain;
-            
-            // Load themes
-            loadThemes(shopDomain);
-          } else {
-            alert('Error connecting to store: ' + (data.message || 'Unknown error'));
-          }
-        })
-        .catch(error => {
-          alert('Error connecting to store: ' + error.message);
-        });
-    }
-    
-    // Function to load themes for a shop
-    function loadThemes(shop) {
-      fetch(`/api/themes?shop=${shop}`)
-        .then(response => response.json())
-        .then(data => {
-          if (data.success) {
-            const selectEl = document.getElementById('theme-select');
-            selectEl.innerHTML = '';
-            
-            data.themes.forEach(theme => {
-              const option = document.createElement('option');
-              option.value = theme.id;
-              option.textContent = `${theme.name}${theme.role === 'main' ? ' (active)' : ''}`;
-              option.selected = theme.role === 'main';
-              selectEl.appendChild(option);
-            });
-            
-            // Set the selected theme ID
-            selectedThemeId = selectEl.value;
-            
-            // Add change listener
-            selectEl.addEventListener('change', function() {
-              selectedThemeId = this.value;
-            });
-          } else {
-            document.getElementById('theme-select').innerHTML = '<option value="">Error loading themes</option>';
-          }
-        })
-        .catch(error => {
-          document.getElementById('theme-select').innerHTML = '<option value="">Error loading themes</option>';
-        });
-    }
-    
-    // Function to update shop URL in the install link
-    function updateShopUrl() {
-      const shopInput = document.getElementById('shop-input').value.trim();
-      if (!shopInput) {
+      // Validate shop format
+      if (!shop) {
         alert('Please enter your shop domain');
-        return false;
+        return;
       }
       
-      // Format shop domain if needed
-      let formattedShop = shopInput;
-      if (!formattedShop.includes('.myshopify.com')) {
-        formattedShop += '.myshopify.com';
+      // Add myshopify.com if not present
+      if (!shop.includes('.myshopify.com')) {
+        shop += '.myshopify.com';
       }
       
-      const installLink = document.getElementById('install-link');
-      installLink.href = `/auth?shop=${formattedShop}`;
-      return true;
+      // Validate shop domain format
+      if (!/^[a-zA-Z0-9][a-zA-Z0-9-]*\.myshopify\.com$/.test(shop)) {
+        alert('Invalid shop domain format');
+        return;
+      }
+      
+      // Redirect to auth endpoint
+      window.location.href = `/auth?shop=${encodeURIComponent(shop)}`;
     }
   </script>
 </body>

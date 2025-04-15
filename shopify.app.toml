@@ -5,7 +5,7 @@
 # API version that your app is using
 api_version = "2024-01"
 # Scopes your app needs
-scopes = "read_themes,write_themes,read_script_tags,write_script_tags,read_files,write_files"
+scopes = "read_themes,write_themes,read_files,write_files"
 
 [auth]
 # Redirect URL for auth callback
