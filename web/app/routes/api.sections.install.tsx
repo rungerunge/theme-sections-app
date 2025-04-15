@@ -19,6 +19,15 @@ interface ThemesResponse {
   data: Theme[];
 }
 
+interface SettingsResponse {
+  body: {
+    asset: {
+      key: string;
+      value: string;
+    };
+  };
+}
+
 export const action: ActionFunction = async ({ request }) => {
   const { admin } = await authenticate.admin(request);
   const { sectionId, themeId } = await request.json() as RequestBody;
@@ -59,33 +68,19 @@ export const action: ActionFunction = async ({ request }) => {
     let sectionContent;
     try {
       sectionContent = await fs.readFile(sectionPath, 'utf8');
-    } catch (readError) {
-      console.error(`Failed to read section file: ${readError.message}`);
-      
-      // Log available directories for debugging
-      console.log('Current working directory:', process.cwd());
-      try {
-        const rootDir = path.join(process.cwd(), '..');
-        const rootContents = await fs.readdir(rootDir);
-        console.log('Root directory contents:', rootContents);
-        
-        if (rootContents.includes('sections')) {
-          const sectionsAvailable = await fs.readdir(path.join(rootDir, 'sections'));
-          console.log('Available sections in root:', sectionsAvailable);
-        }
-      } catch (dirError) {
-        console.error(`Failed to read directories: ${dirError.message}`);
-      }
-      
-      return json({ 
-        error: "Section template not found. Make sure the section exists and has a valid section.liquid file.",
-        cwd: process.cwd(),
-        attemptedPath: sectionPath
-      }, { status: 404 });
+    } catch (err) {
+      console.error(`Error reading section file: ${err}`);
+      return json({ error: "Section file not found" }, { status: 404 });
     }
 
-    // Add the section to the theme
+    // Check for additional assets (CSS, JS)
+    const cssPath = path.join(path.dirname(sectionPath), 'style.css');
+    const jsPath = path.join(path.dirname(sectionPath), 'script.js');
+    const schemaPath = path.join(path.dirname(sectionPath), 'schema.json');
+
+    // Add section to theme
     try {
+      // Add main section file
       await admin.rest.put({
         path: `themes/${themeId}/assets`,
         data: {
@@ -95,16 +90,81 @@ export const action: ActionFunction = async ({ request }) => {
           }
         }
       });
-    } catch (apiError: any) {
-      console.error('Error while adding section to theme:', apiError.message);
-      return json({ error: `Failed to add section to theme: ${apiError.message}` }, { status: 500 });
-    }
 
-    return json({ 
-      success: true,
-      sectionId,
-      themeId
-    });
+      // Add CSS if exists
+      try {
+        const cssContent = await fs.readFile(cssPath, 'utf8');
+        await admin.rest.put({
+          path: `themes/${themeId}/assets`,
+          data: {
+            asset: {
+              key: `assets/${sectionId}.css`,
+              value: cssContent
+            }
+          }
+        });
+      } catch (err) {
+        console.log('No CSS file found for section, skipping...');
+      }
+
+      // Add JS if exists
+      try {
+        const jsContent = await fs.readFile(jsPath, 'utf8');
+        await admin.rest.put({
+          path: `themes/${themeId}/assets`,
+          data: {
+            asset: {
+              key: `assets/${sectionId}.js`,
+              value: jsContent
+            }
+          }
+        });
+      } catch (err) {
+        console.log('No JS file found for section, skipping...');
+      }
+
+      // Update settings schema if exists
+      try {
+        const schemaContent = await fs.readFile(schemaPath, 'utf8');
+        const schemaData = JSON.parse(schemaContent);
+        
+        // Get current settings schema
+        const settingsResponse = await admin.rest.get({
+          path: `themes/${themeId}/assets`,
+          query: { 'asset[key]': 'config/settings_schema.json' }
+        }) as unknown as SettingsResponse;
+
+        if (settingsResponse.body) {
+          const currentSchema = JSON.parse(settingsResponse.body.asset.value);
+          // Add new section settings if not already present
+          if (!currentSchema.some(item => item.name === sectionId)) {
+            currentSchema.push(schemaData);
+            
+            await admin.rest.put({
+              path: `themes/${themeId}/assets`,
+              data: {
+                asset: {
+                  key: 'config/settings_schema.json',
+                  value: JSON.stringify(currentSchema, null, 2)
+                }
+              }
+            });
+          }
+        }
+      } catch (err) {
+        console.log('No schema file found for section, skipping...');
+      }
+
+      return json({ 
+        success: true, 
+        message: "Section installed successfully" 
+      });
+    } catch (error) {
+      console.error("Error installing section:", error);
+      return json({ 
+        error: "Failed to install section" 
+      }, { status: 500 });
+    }
   } catch (error: any) {
     console.error('Error installing section:', error);
     return json({ error: error.message }, { status: 500 });
