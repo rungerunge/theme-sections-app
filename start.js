@@ -44,7 +44,8 @@ app.get('/health', (req, res) => {
   res.status(200).json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
-    buildDirExists: fs.existsSync(BUILD_DIR)
+    buildDirExists: fs.existsSync(BUILD_DIR),
+    version: '1.0.3'
   });
 });
 
@@ -71,13 +72,51 @@ app.get('/debug', (req, res) => {
     webBuildDirExists: fs.existsSync(path.join(process.cwd(), 'web', 'build')),
     directories,
     timestamp: new Date().toISOString(),
-    version: '1.0.2' // Version to track changes
+    version: '1.0.3' // Version to track changes
   });
+});
+
+// Add a test API endpoint for section installation that doesn't rely on Remix
+app.post('/api/test/sections/install', express.json(), (req, res) => {
+  try {
+    const { sectionId } = req.body;
+    
+    if (!sectionId) {
+      return res.status(400).json({ error: 'Section ID is required' });
+    }
+    
+    // Try to read the section file if it exists
+    let sectionContent = null;
+    const sectionPath = path.join(process.cwd(), 'sections', sectionId, 'section.liquid');
+    
+    if (fs.existsSync(sectionPath)) {
+      sectionContent = fs.readFileSync(sectionPath, 'utf8');
+    }
+    
+    return res.status(200).json({
+      success: true,
+      message: 'Test section installation endpoint working',
+      sectionId,
+      sectionExists: !!sectionContent,
+      sectionContentPreview: sectionContent ? sectionContent.substring(0, 100) + '...' : null,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error in test section install endpoint:', error);
+    return res.status(500).json({ 
+      error: 'Test endpoint error', 
+      message: error.message 
+    });
+  }
 });
 
 // Simple fallback if Remix can't be loaded
 app.get('/api/fallback', (req, res) => {
-  res.status(200).json({ message: 'Fallback API endpoint is working' });
+  res.status(200).json({ 
+    message: 'Fallback API endpoint is working',
+    version: '1.0.3',
+    timestamp: new Date().toISOString()
+  });
 });
 
 try {
@@ -117,5 +156,5 @@ try {
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
-  console.log(`Server running on port ${port} (version 1.0.2)`);
+  console.log(`Server running on port ${port} (version 1.0.3)`);
 }); 
