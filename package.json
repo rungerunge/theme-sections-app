@@ -6,12 +6,13 @@
   "main": "simple-server.js",
   "license": "UNLICENSED",
   "scripts": {
-    "build": "echo 'Simple build process - no Remix required'",
-    "dev": "shopify app dev",
+    "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node simple-server.js",
+    "dev": "cd web && npm run dev",
+    "build": "cd web && npm run build",
+    "shopify": "cd web && npm run shopify",
     "version-check": "node version-check.js",
     "lint": "eslint --cache --cache-location ./node_modules/.cache/eslint .",
-    "shopify": "shopify",
     "generate": "shopify app generate"
   },
   "keywords": [

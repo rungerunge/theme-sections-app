@@ -6,7 +6,7 @@ import path from 'path';
 
 interface RequestBody {
   sectionId: string;
-  themeId?: string; // Optional theme ID (defaults to active theme if not provided)
+  themeId: string; // Theme ID is required now
 }
 
 interface Theme {
@@ -23,48 +23,64 @@ export const action: ActionFunction = async ({ request }) => {
   const { admin } = await authenticate.admin(request);
   const { sectionId, themeId } = await request.json() as RequestBody;
 
+  if (!sectionId) {
+    return json({ error: "Section ID is required" }, { status: 400 });
+  }
+
+  if (!themeId) {
+    return json({ error: "Theme ID is required" }, { status: 400 });
+  }
+
   try {
     // Read the section template
-    const sectionContent = await fs.readFile(
-      path.join(process.cwd(), 'sections', sectionId, 'section.liquid'),
-      'utf8'
-    );
+    const sectionPath = path.join(process.cwd(), '..', 'sections', sectionId, 'section.liquid');
 
-    let targetThemeId: number;
-
-    // If themeId is provided, use it; otherwise, get the active theme
-    if (themeId) {
-      targetThemeId = parseInt(themeId, 10);
-    } else {
-      // Get the active theme
-      const response = await admin.rest.get({
-        path: 'themes',
-      });
-      const { data: themes } = response as unknown as ThemesResponse;
+    console.log(`Looking for section at: ${sectionPath}`);
+    
+    let sectionContent;
+    try {
+      sectionContent = await fs.readFile(sectionPath, 'utf8');
+    } catch (readError) {
+      console.error(`Failed to read section file: ${readError.message}`);
       
-      const activeTheme = themes.find((theme) => theme.role === 'main');
-      if (!activeTheme) {
-        throw new Error('No active theme found');
+      // Log available sections for debugging
+      try {
+        const sectionsDir = path.join(process.cwd(), '..', 'sections');
+        const availableSections = await fs.readdir(sectionsDir);
+        console.log('Available sections:', availableSections);
+      } catch (dirError) {
+        console.error(`Failed to read sections directory: ${dirError.message}`);
       }
       
-      targetThemeId = activeTheme.id;
+      return json({ 
+        error: "Section template not found. Make sure the section exists and has a valid section.liquid file." 
+      }, { status: 404 });
     }
 
     // Add the section to the theme
-    await admin.rest.put({
-      path: `themes/${targetThemeId}/assets`,
-      data: {
-        asset: {
-          key: `sections/${sectionId}.liquid`,
-          value: sectionContent
+    try {
+      await admin.rest.put({
+        path: `themes/${themeId}/assets`,
+        data: {
+          asset: {
+            key: `sections/${sectionId}.liquid`,
+            value: sectionContent
+          }
         }
-      }
-    });
+      });
+    } catch (apiError: any) {
+      console.error('Error while adding section to theme:', apiError.message);
+      return json({ error: `Failed to add section to theme: ${apiError.message}` }, { status: 500 });
+    }
 
-    return json({ success: true });
-  } catch (error) {
+    return json({ 
+      success: true,
+      sectionId,
+      themeId
+    });
+  } catch (error: any) {
     console.error('Error installing section:', error);
-    return json({ error: (error as Error).message }, { status: 500 });
+    return json({ error: error.message }, { status: 500 });
   }
 };
 
