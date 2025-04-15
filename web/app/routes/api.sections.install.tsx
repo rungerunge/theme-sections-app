@@ -32,8 +32,27 @@ export const action: ActionFunction = async ({ request }) => {
   }
 
   try {
-    // Read the section template
-    const sectionPath = path.join(process.cwd(), '..', 'sections', sectionId, 'section.liquid');
+    // Determine the sections directory path
+    // First try relative to web directory
+    let sectionsDir = path.join(process.cwd(), '..', 'sections');
+    let sectionPath = path.join(sectionsDir, sectionId, 'section.liquid');
+    
+    // Check if path exists, if not try alternate paths
+    try {
+      await fs.access(sectionPath);
+    } catch (e) {
+      // Try direct path from root
+      sectionsDir = path.join(process.cwd(), 'sections');
+      sectionPath = path.join(sectionsDir, sectionId, 'section.liquid');
+      
+      try {
+        await fs.access(sectionPath);
+      } catch (e) {
+        // One more attempt with public directory
+        sectionsDir = path.join(process.cwd(), 'public', 'sections');
+        sectionPath = path.join(sectionsDir, sectionId, 'section.liquid');
+      }
+    }
 
     console.log(`Looking for section at: ${sectionPath}`);
     
@@ -43,17 +62,25 @@ export const action: ActionFunction = async ({ request }) => {
     } catch (readError) {
       console.error(`Failed to read section file: ${readError.message}`);
       
-      // Log available sections for debugging
+      // Log available directories for debugging
+      console.log('Current working directory:', process.cwd());
       try {
-        const sectionsDir = path.join(process.cwd(), '..', 'sections');
-        const availableSections = await fs.readdir(sectionsDir);
-        console.log('Available sections:', availableSections);
+        const rootDir = path.join(process.cwd(), '..');
+        const rootContents = await fs.readdir(rootDir);
+        console.log('Root directory contents:', rootContents);
+        
+        if (rootContents.includes('sections')) {
+          const sectionsAvailable = await fs.readdir(path.join(rootDir, 'sections'));
+          console.log('Available sections in root:', sectionsAvailable);
+        }
       } catch (dirError) {
-        console.error(`Failed to read sections directory: ${dirError.message}`);
+        console.error(`Failed to read directories: ${dirError.message}`);
       }
       
       return json({ 
-        error: "Section template not found. Make sure the section exists and has a valid section.liquid file." 
+        error: "Section template not found. Make sure the section exists and has a valid section.liquid file.",
+        cwd: process.cwd(),
+        attemptedPath: sectionPath
       }, { status: 404 });
     }
 

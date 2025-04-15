@@ -9,7 +9,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node simple-server.js",
     "dev": "cd web && npm run dev",
-    "build": "cd web && npm run build",
+    "build": "cd web && npx shopify remix build",
     "shopify": "cd web && npm run shopify",
     "version-check": "node version-check.js",
     "lint": "eslint --cache --cache-location ./node_modules/.cache/eslint .",

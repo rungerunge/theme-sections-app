@@ -1,0 +1,10 @@
+{
+  "name": "shopify-app-sections-web",
+  "private": true,
+  "scripts": {
+    "build": "remix build",
+    "dev": "shopify app dev",
+    "start": "remix-serve build",
+    "shopify": "shopify app"
+  }
+} 
