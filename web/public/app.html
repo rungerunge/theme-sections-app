@@ -91,6 +91,21 @@
       max-width: 1200px;
       margin: 0 auto;
     }
+    .result-panel {
+      display: none;
+      margin-top: 16px;
+      padding: 16px;
+      background-color: #f4f6f8;
+      border-radius: 4px;
+    }
+    .success {
+      background-color: #e3f1df;
+      border-left: 4px solid #50b83c;
+    }
+    .error {
+      background-color: #fbeae5;
+      border-left: 4px solid #de3618;
+    }
   </style>
 </head>
 <body>
@@ -104,38 +119,6 @@
   <div class="section-grid">
     <div class="section-card">
       <div class="section-image">
-        <img src="/section-previews/featured-collection.png" alt="Featured Collection" onerror="this.src='https://burst.shopifycdn.com/photos/business-woman-smiling-in-office.jpg?width=500'; this.onerror=null;">
-      </div>
-      <div class="section-content">
-        <h3 class="section-title">Featured Collection</h3>
-        <p class="section-description">Display a collection of products in a grid layout. Perfect for showcasing your best products on any page.</p>
-        <div class="section-tags">
-          <span class="tag">Products</span>
-          <span class="tag">Featured</span>
-          <span class="tag">Grid</span>
-        </div>
-        <button class="install-button" onclick="alert('Section installation will be available soon!')">Preview & Install</button>
-      </div>
-    </div>
-    
-    <div class="section-card">
-      <div class="section-image">
-        <img src="/section-previews/hero-banner.png" alt="Hero Banner" onerror="this.src='https://burst.shopifycdn.com/photos/blue-orange-and-pink-shopping-bags.jpg?width=500'; this.onerror=null;">
-      </div>
-      <div class="section-content">
-        <h3 class="section-title">Hero Banner</h3>
-        <p class="section-description">A full-width banner with text overlay and call-to-action button. Great for announcing promotions or new collections.</p>
-        <div class="section-tags">
-          <span class="tag">Banner</span>
-          <span class="tag">Hero</span>
-          <span class="tag">Marketing</span>
-        </div>
-        <button class="install-button" onclick="alert('Section installation will be available soon!')">Preview & Install</button>
-      </div>
-    </div>
-    
-    <div class="section-card">
-      <div class="section-image">
         <img src="/section-previews/test-section.png" alt="Test Section" onerror="this.src='https://burst.shopifycdn.com/photos/flatlay-iron-skillet-with-meat-vegetables.jpg?width=500'; this.onerror=null;">
       </div>
       <div class="section-content">
@@ -146,9 +129,64 @@
           <span class="tag">Simple</span>
           <span class="tag">Configurable</span>
         </div>
-        <button class="install-button" onclick="alert('Section installation will be available soon!')">Preview & Install</button>
+        <button id="install-test-section" class="install-button">Preview & Install</button>
+        <div id="result" class="result-panel">
+          <h4>Installation Result</h4>
+          <pre id="result-content"></pre>
+        </div>
       </div>
     </div>
   </div>
+
+  <script>
+    // Function to install a section
+    async function installSection(sectionId) {
+      const resultPanel = document.getElementById('result');
+      const resultContent = document.getElementById('result-content');
+      
+      // Show the result panel
+      resultPanel.style.display = 'block';
+      resultPanel.classList.remove('success', 'error');
+      resultContent.textContent = 'Installing section...';
+      
+      try {
+        // Get shop and token from URL params or use defaults
+        const urlParams = new URLSearchParams(window.location.search);
+        const shop = urlParams.get('shop') || 'okayscaledemo.myshopify.com';
+        const accessToken = urlParams.get('token') || 'placeholder-token';
+        
+        // Make API call to install section
+        const response = await fetch('/api/sections/install', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            sectionId,
+            shop,
+            accessToken
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          resultPanel.classList.add('success');
+          resultContent.textContent = `Success! Section ${sectionId} installed to theme "${data.themeName}"`;
+        } else {
+          resultPanel.classList.add('error');
+          resultContent.textContent = `Error: ${data.error || data.message || 'Unknown error'}`;
+        }
+      } catch (error) {
+        resultPanel.classList.add('error');
+        resultContent.textContent = `Error: ${error.message}`;
+      }
+    }
+    
+    // Add event listener to the install button
+    document.getElementById('install-test-section').addEventListener('click', () => {
+      installSection('test-section');
+    });
+  </script>
 </body>
 </html> 
