@@ -15,7 +15,7 @@ import {
   LegacyStack,
   Tag,
   ButtonGroup,
-  BlockStack,
+  Box,
   InlineStack
 } from "@shopify/polaris";
 import { ImageMajor } from '@shopify/polaris-icons';
@@ -206,14 +206,14 @@ export default function Index() {
         )}
         
         <Layout.Section>
-          <BlockStack gap="4">
+          <Box paddingBlockEnd="4">
             <Text variant="headingLg" as="h2">
               Browse Available Sections
             </Text>
             <Text variant="bodyMd" as="p">
               Add custom sections to your Shopify theme with one click. Select a section to preview and install.
             </Text>
-          </BlockStack>
+          </Box>
         </Layout.Section>
 
         <Layout.Section>
@@ -250,7 +250,7 @@ export default function Index() {
                   </LegacyCard.Section>
                   
                   <LegacyCard.Section>
-                    <BlockStack gap="2">
+                    <Box paddingBlockStart="2" paddingBlockEnd="2">
                       <Text variant="headingMd" as="h3">
                         {section.title}
                       </Text>
@@ -262,7 +262,7 @@ export default function Index() {
                           <Tag key={tag}>{tag}</Tag>
                         ))}
                       </LegacyStack>
-                    </BlockStack>
+                    </Box>
                   </LegacyCard.Section>
                   
                   <LegacyCard.Section>
@@ -326,14 +326,14 @@ export default function Index() {
                 )}
               </div>
               
-              <BlockStack gap="4">
+              <Box paddingBlockStart="4">
                 <Text variant="headingMd" as="h3">
                   {selectedSection.title}
                 </Text>
                 <Text variant="bodyMd" as="p">
                   {selectedSection.description}
                 </Text>
-              </BlockStack>
+              </Box>
               
               <Select
                 label="Select theme"
