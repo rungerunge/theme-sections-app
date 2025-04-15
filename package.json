@@ -6,7 +6,7 @@
   "main": "web/index.js",
   "license": "UNLICENSED",
   "scripts": {
-    "build": "cd web && remix build --config remix.config.js",
+    "build": "cd web && remix build --config remix.config.js && cd .. && cp -r web/build build",
     "dev": "shopify app dev",
     "start": "node start.js",
     "version-check": "node version-check.js",
