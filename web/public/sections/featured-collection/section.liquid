@@ -1,0 +1,92 @@
+{% comment %}
+  Featured Collection section template
+  Author: OkayScale
+{% endcomment %}
+
+{% schema %}
+{
+  "name": "Featured Collection",
+  "tag": "section",
+  "class": "section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "title",
+      "label": "Title",
+      "default": "Featured Collection"
+    },
+    {
+      "type": "collection",
+      "id": "collection",
+      "label": "Collection"
+    },
+    {
+      "type": "range",
+      "id": "products_to_show",
+      "min": 2,
+      "max": 12,
+      "step": 1,
+      "default": 4,
+      "label": "Products to show"
+    },
+    {
+      "type": "select",
+      "id": "columns_desktop",
+      "options": [
+        {
+          "value": "2",
+          "label": "2 columns"
+        },
+        {
+          "value": "3",
+          "label": "3 columns"
+        },
+        {
+          "value": "4",
+          "label": "4 columns"
+        }
+      ],
+      "default": "4",
+      "label": "Number of columns on desktop"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_view_all",
+      "default": true,
+      "label": "Show view all button"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Featured Collection",
+      "category": "Collection"
+    }
+  ]
+}
+{% endschema %}
+
+<div class="page-width">
+  <h2 class="section-heading">{{ section.settings.title }}</h2>
+  
+  {% if section.settings.collection != blank %}
+    <div class="collection-grid grid grid--{{ section.settings.columns_desktop }}-col-desktop">
+      {% for product in section.settings.collection.products limit: section.settings.products_to_show %}
+        <div class="grid__item">
+          {% render 'product-card', product: product %}
+        </div>
+      {% endfor %}
+    </div>
+    
+    {% if section.settings.show_view_all and section.settings.collection.all_products_count > section.settings.products_to_show %}
+      <div class="center collection__view-all">
+        <a href="{{ section.settings.collection.url }}" class="button">
+          View all
+        </a>
+      </div>
+    {% endif %}
+  {% else %}
+    <div class="collection-placeholder">
+      <p>Select a collection to display products</p>
+    </div>
+  {% endif %}
+</div> 
