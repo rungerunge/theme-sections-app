@@ -28,11 +28,19 @@
     .section-image {
       width: 100%;
       height: 180px;
+      margin-bottom: 1rem;
+      overflow: hidden;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+    }
+    .section-image img {
+      width: 100%;
+      height: 100%;
       object-fit: cover;
-      background-color: #f4f6f8;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      transition: transform 0.3s ease;
+    }
+    .section-image:hover img {
+      transform: scale(1.05);
     }
     .section-content {
       padding: 16px;
@@ -153,19 +161,34 @@
 
   <!-- Authentication Banner -->
   <div id="auth-banner" class="auth-banner">
-    <h2>Select your Shopify store</h2>
-    <p>Choose your store from the list below to install sections:</p>
-    <div style="display: flex; margin-top: 12px;">
-      <select id="store-select" style="flex: 1; padding: 8px; border: 1px solid #c4cdd5; border-radius: 4px 0 0 4px; border-right: none;">
-        <option value="">Select a store...</option>
-        <option value="okayscaledemo.myshopify.com">OkayScale Demo Store</option>
-        <!-- Add more stores as needed -->
-      </select>
-      <button onclick="selectStore()" class="auth-button" style="border-radius: 0 4px 4px 0;">Connect</button>
+    <h2>Connect to your Shopify store</h2>
+    <p>Choose how you want to connect to your Shopify store:</p>
+    
+    <div style="margin-top: 16px;">
+      <h3>Option 1: Install via Shopify App Store</h3>
+      <p>Install this app through the Shopify App Store to get automatic authentication and access to your themes.</p>
+      <a href="/auth?shop=" class="auth-button" id="install-link" onclick="return updateShopUrl()">Install App</a>
+      <div style="margin-top: 8px;">
+        <input type="text" id="shop-input" placeholder="your-store.myshopify.com" style="padding: 8px; width: 250px; border: 1px solid #c4cdd5; border-radius: 4px;">
+      </div>
+      <p>Enter your shop domain above and click "Install App"</p>
     </div>
-    <p class="note" style="margin-top: 12px; font-size: 12px; color: #637381;">
-      Note: This is a private app. If your store isn't listed, please contact the OkayScale support team.
-    </p>
+    
+    <div style="margin-top: 24px; border-top: 1px solid #ddd; padding-top: 16px;">
+      <h3>Option 2: Select from pre-configured stores</h3>
+      <p>If your store has been pre-configured by the OkayScale team, select it from the list below:</p>
+      <div style="display: flex; margin-top: 12px;">
+        <select id="store-select" style="flex: 1; padding: 8px; border: 1px solid #c4cdd5; border-radius: 4px 0 0 4px; border-right: none;">
+          <option value="">Select a store...</option>
+          <option value="okayscaledemo.myshopify.com">OkayScale Demo Store</option>
+          <!-- Add more stores as needed -->
+        </select>
+        <button onclick="selectStore()" class="auth-button" style="border-radius: 0 4px 4px 0;">Connect</button>
+      </div>
+      <p class="note" style="margin-top: 12px; font-size: 12px; color: #637381;">
+        Note: If your store isn't listed, please use Option 1 or contact the OkayScale support team.
+      </p>
+    </div>
   </div>
 
   <!-- Store Connection Info (initially hidden) -->
@@ -197,142 +220,20 @@
         </div>
       </div>
     </div>
+    <div class="section-card">
+      <h3>Todo List</h3>
+      <div class="section-image">
+        <img src="/section-preview/todo-list" alt="Todo List Section Preview" />
+      </div>
+      <p>Add a customizable todo list to your store</p>
+      <div class="section-actions">
+        <a href="/preview/todo-list" class="btn btn-secondary" target="_blank">Preview</a>
+        <button class="btn btn-primary" data-section="todo-list">Install</button>
+      </div>
+    </div>
   </div>
 
   <script>
     let selectedThemeId = null;
     
-    // Function to select a store
-    function selectStore() {
-      const storeSelect = document.getElementById('store-select');
-      const shop = storeSelect.value;
-      
-      if (!shop) {
-        alert('Please select a store');
-        return;
-      }
-      
-      // For private apps, we use a simplified connection
-      fetch(`/api/connect-store?shop=${shop}`)
-        .then(response => response.json())
-        .then(data => {
-          if (data.success) {
-            // Update UI
-            document.getElementById('auth-banner').classList.add('hidden');
-            document.getElementById('store-info').classList.remove('hidden');
-            document.getElementById('shop-name').textContent = shop;
-            
-            // Load themes for the connected store
-            loadThemes(shop);
-          } else {
-            alert(`Error connecting to store: ${data.error || 'Unknown error'}`);
-          }
-        })
-        .catch(error => {
-          alert(`Error connecting to store: ${error.message}`);
-        });
-    }
-
-    // Function to load themes from the store
-    async function loadThemes(shop) {
-      try {
-        // Fetch themes from our API endpoint
-        const response = await fetch(`/api/themes?shop=${shop}`);
-        const data = await response.json();
-        
-        if (!data.success) {
-          console.error('Error loading themes:', data.error);
-          return;
-        }
-        
-        const themes = data.themes;
-        
-        const themeSelect = document.getElementById('theme-select');
-        themeSelect.innerHTML = ''; // Clear existing options
-        
-        themes.forEach(theme => {
-          const option = document.createElement('option');
-          option.value = theme.id;
-          option.textContent = theme.name + (theme.role === 'main' ? ' (Current theme)' : '');
-          if (theme.role === 'main') {
-            option.selected = true;
-            selectedThemeId = theme.id;
-          }
-          themeSelect.appendChild(option);
-        });
-        
-        // Add event listener to update selectedThemeId when changed
-        themeSelect.addEventListener('change', function() {
-          selectedThemeId = this.value;
-        });
-      } catch (error) {
-        console.error('Error loading themes:', error);
-      }
-    }
-
-    // Function to install a section
-    async function installSection(sectionId) {
-      const resultPanel = document.getElementById('result');
-      const resultContent = document.getElementById('result-content');
-      
-      // Get the selected store
-      const shop = document.getElementById('store-select').value;
-      
-      // Check if we're authenticated and have selected a theme
-      if (!shop) {
-        resultPanel.style.display = 'block';
-        resultPanel.classList.add('error');
-        resultContent.textContent = 'Error: Please select a store first';
-        return;
-      }
-
-      if (!selectedThemeId) {
-        resultPanel.style.display = 'block';
-        resultPanel.classList.add('error');
-        resultContent.textContent = 'Error: Please select a theme for installation';
-        return;
-      }
-      
-      // Show the result panel
-      resultPanel.style.display = 'block';
-      resultPanel.classList.remove('success', 'error');
-      resultContent.textContent = 'Installing section...';
-      
-      try {
-        // Make API call to install section
-        const response = await fetch('/api/sections/install', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            sectionId,
-            shop,
-            themeId: selectedThemeId
-          })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-          resultPanel.classList.add('success');
-          resultContent.textContent = `Success! Section ${sectionId} installed to theme "${data.themeName}"`;
-        } else {
-          resultPanel.classList.add('error');
-          resultContent.textContent = `Error: ${data.error || data.message || 'Unknown error'}`;
-        }
-      } catch (error) {
-        resultPanel.classList.add('error');
-        resultContent.textContent = `Error: ${error.message}`;
-      }
-    }
-    
-    // Add event listener to the install button
-    document.getElementById('install-test-section').addEventListener('click', () => {
-      installSection('test-section');
-    });
-
-    // Initialize the page - don't auto-select
-  </script>
-</body>
-</html> 
+    // Function to

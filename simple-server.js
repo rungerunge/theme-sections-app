@@ -28,6 +28,7 @@ app.use(express.urlencoded({ extended: true }));
 const SHOPIFY_API_KEY = process.env.SHOPIFY_API_KEY || 'your_api_key';
 const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET || 'your_api_secret';
 const HOST = process.env.HOST || 'https://theme-sections-app-chjk.onrender.com';
+const SCOPES = process.env.SCOPES || 'read_themes,write_themes,write_products,write_customers,write_draft_orders,write_content';
 
 // Private app credentials - store tokens securely
 const PRIVATE_APP_TOKENS = {
@@ -264,6 +265,85 @@ app.post('/api/sections/install', async (req, res) => {
       error: 'Server error', 
       message: error.message 
     });
+  }
+});
+
+// Add a route for initiating Shopify OAuth
+app.get('/auth', (req, res) => {
+  const { shop } = req.query;
+  
+  if (!shop) {
+    return res.status(400).send('Missing shop parameter. Please add ?shop=your-shop.myshopify.com to the URL.');
+  }
+  
+  // Construct the authorization URL
+  const redirectUri = `${HOST}/auth/callback`;
+  const installUrl = `https://${shop}/admin/oauth/authorize?client_id=${SHOPIFY_API_KEY}&scope=${SCOPES}&redirect_uri=${redirectUri}`;
+  
+  res.redirect(installUrl);
+});
+
+// Handle the OAuth callback from Shopify
+app.get('/auth/callback', async (req, res) => {
+  const { shop, hmac, code, state } = req.query;
+  
+  if (!shop || !code) {
+    return res.status(400).send('Required parameters missing');
+  }
+  
+  try {
+    // Exchange the temporary code for a permanent access token
+    const response = await axios.post(`https://${shop}/admin/oauth/access_token`, {
+      client_id: SHOPIFY_API_KEY,
+      client_secret: SHOPIFY_API_SECRET,
+      code
+    });
+    
+    const accessToken = response.data.access_token;
+    
+    // For demo purposes, we're storing the token for the shop
+    // In a real app, you'd save this to a database
+    PRIVATE_APP_TOKENS[shop] = accessToken;
+    console.log(`Stored access token for ${shop}`);
+    
+    // Redirect to the app
+    res.redirect(`/web/public/app.html?shop=${shop}`);
+  } catch (error) {
+    console.error('Error completing OAuth:', error);
+    res.status(500).send('Error completing OAuth flow');
+  }
+});
+
+// Serve todo preview page
+app.get('/preview/todo-list', (req, res) => {
+  res.sendFile(path.join(__dirname, 'web', 'public', 'todo-preview.html'));
+});
+
+// Serve section preview images
+app.get('/section-preview/:sectionId', (req, res) => {
+  const sectionId = req.params.sectionId;
+  const previewPath = path.join(__dirname, 'sections', sectionId, 'preview.png');
+  
+  // Check if file exists
+  if (fs.existsSync(previewPath)) {
+    res.sendFile(previewPath);
+  } else {
+    // Generate simple SVG as placeholder
+    const sectionTitle = sectionId.split('-').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(' ');
+    
+    const svgTemplate = `
+      <svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
+        <rect width="800" height="600" fill="#f8f8f8"/>
+        <rect x="50" y="50" width="700" height="500" rx="10" fill="#ffffff" stroke="#e0e0e0" stroke-width="2"/>
+        <text x="400" y="150" font-family="Arial, sans-serif" font-size="32" font-weight="bold" text-anchor="middle" fill="#333333">${sectionTitle}</text>
+        <text x="400" y="300" font-family="Arial, sans-serif" font-size="18" text-anchor="middle" fill="#666666">Preview coming soon</text>
+      </svg>
+    `;
+    
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.send(svgTemplate);
   }
 });
 

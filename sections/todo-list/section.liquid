@@ -1,0 +1,393 @@
+{% comment %}
+  @name: Todo List
+  @description: A simple todo list section for managing tasks
+  @author: Silas Nielsen
+  @category: Utilities
+  @tags: todo, tasks, list, productivity
+{% endcomment %}
+
+{% schema %}
+{
+  "name": "Todo List",
+  "tag": "section",
+  "class": "todo-list-section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "My Todo List"
+    },
+    {
+      "type": "text",
+      "id": "input_placeholder",
+      "label": "Input placeholder",
+      "default": "Add a new task..."
+    },
+    {
+      "type": "text",
+      "id": "button_text",
+      "label": "Button text",
+      "default": "Add"
+    },
+    {
+      "type": "text",
+      "id": "empty_list_text",
+      "label": "Empty list text",
+      "default": "No tasks yet. Add one above!"
+    },
+    {
+      "type": "color",
+      "id": "background_color",
+      "label": "Background color",
+      "default": "#f8f8f8"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "Text color",
+      "default": "#333333"
+    },
+    {
+      "type": "color",
+      "id": "button_color",
+      "label": "Button color",
+      "default": "#3b82f6"
+    },
+    {
+      "type": "color",
+      "id": "button_text_color",
+      "label": "Button text color",
+      "default": "#ffffff"
+    },
+    {
+      "type": "select",
+      "id": "container_width",
+      "label": "Container width",
+      "options": [
+        {
+          "value": "narrow",
+          "label": "Narrow"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "wide",
+          "label": "Wide"
+        }
+      ],
+      "default": "medium"
+    },
+    {
+      "type": "range",
+      "id": "margin_top",
+      "label": "Top margin",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "default": 32
+    },
+    {
+      "type": "range",
+      "id": "margin_bottom",
+      "label": "Bottom margin",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "default": 32
+    }
+  ],
+  "presets": [
+    {
+      "name": "Todo List",
+      "category": "Interactive"
+    }
+  ]
+}
+{% endschema %}
+
+<div class="todo-list-section"
+  style="
+    background-color: {{ section.settings.background_color }};
+    color: {{ section.settings.text_color }};
+    max-width: {% if section.settings.container_width == 'narrow' %}500px{% elsif section.settings.container_width == 'medium' %}800px{% else %}1100px{% endif %};
+    margin: {{ section.settings.margin_top }}px auto {{ section.settings.margin_bottom }}px;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  "
+  id="TodoSection-{{ section.id }}"
+  data-section-id="{{ section.id }}"
+  data-section-type="todo-list">
+  
+  <h2 style="font-size: 1.5rem; font-weight: bold; margin-bottom: 1rem;">
+    {{ section.settings.heading }}
+  </h2>
+  
+  <div class="todo-input-container" style="display: flex; margin-bottom: 1rem;">
+    <input 
+      type="text" 
+      id="newTodoInput-{{ section.id }}" 
+      placeholder="{{ section.settings.input_placeholder }}"
+      style="
+        flex-grow: 1;
+        padding: 0.5rem;
+        border: 1px solid #ccc;
+        border-right: none;
+        border-top-left-radius: 4px;
+        border-bottom-left-radius: 4px;
+        outline: none;
+      ">
+    <button 
+      id="addTodoBtn-{{ section.id }}"
+      style="
+        background-color: {{ section.settings.button_color }};
+        color: {{ section.settings.button_text_color }};
+        padding: 0.5rem 1rem;
+        border: none;
+        border-top-right-radius: 4px;
+        border-bottom-right-radius: 4px;
+        cursor: pointer;
+        font-weight: 500;
+      ">
+      {{ section.settings.button_text }}
+    </button>
+  </div>
+  
+  <ul id="todoList-{{ section.id }}" style="list-style: none; padding: 0; margin: 0;">
+    <li style="font-style: italic; opacity: 0.7;">{{ section.settings.empty_list_text }}</li>
+  </ul>
+</div>
+
+<style>
+  .todo-section {
+    padding: 40px 20px;
+    font-family: sans-serif;
+  }
+  
+  .todo-container {
+    margin: 0 auto;
+  }
+  
+  .todo-container.narrow {
+    max-width: 600px;
+  }
+  
+  .todo-container.medium {
+    max-width: 800px;
+  }
+  
+  .todo-container.wide {
+    max-width: 1200px;
+  }
+  
+  .todo-heading {
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  
+  .todo-input-container {
+    display: flex;
+    margin-bottom: 20px;
+  }
+  
+  #todo-input {
+    flex-grow: 1;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px 0 0 4px;
+    font-size: 16px;
+  }
+  
+  #add-todo-btn {
+    padding: 10px 20px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 0 4px 4px 0;
+    cursor: pointer;
+    font-size: 16px;
+  }
+  
+  #add-todo-btn:hover {
+    background-color: #45a049;
+  }
+  
+  .todo-list {
+    list-style: none;
+    padding: 0;
+  }
+  
+  .todo-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+  }
+  
+  .todo-item:last-child {
+    border-bottom: none;
+  }
+  
+  .todo-checkbox {
+    margin-right: 10px;
+  }
+  
+  .todo-text {
+    flex-grow: 1;
+  }
+  
+  .todo-text.completed {
+    text-decoration: line-through;
+    color: #888;
+  }
+  
+  .delete-todo {
+    background-color: #f44336;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 5px 10px;
+    cursor: pointer;
+  }
+  
+  .delete-todo:hover {
+    background-color: #d32f2f;
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const sectionId = '{{ section.id }}';
+    const todoInput = document.getElementById(`newTodoInput-${sectionId}`);
+    const addBtn = document.getElementById(`addTodoBtn-${sectionId}`);
+    const todoList = document.getElementById(`todoList-${sectionId}`);
+    
+    // Load todos from localStorage
+    let todos = JSON.parse(localStorage.getItem(`todos-${sectionId}`) || '[]');
+    
+    // Initialize with empty message if needed
+    if (todos.length === 0) {
+      todoList.innerHTML = `<li style="font-style: italic; opacity: 0.7;">{{ section.settings.empty_list_text }}</li>`;
+    } else {
+      renderTodos();
+    }
+    
+    // Add new todo
+    addBtn.addEventListener('click', function() {
+      addTodo();
+    });
+    
+    todoInput.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        addTodo();
+      }
+    });
+    
+    function addTodo() {
+      const text = todoInput.value.trim();
+      if (text === '') return;
+      
+      // Clear empty state if this is the first todo
+      if (todos.length === 0) {
+        todoList.innerHTML = '';
+      }
+      
+      // Add new todo
+      const newTodo = {
+        id: Date.now(),
+        text: text,
+        completed: false
+      };
+      
+      todos.push(newTodo);
+      saveTodos();
+      renderTodos();
+      
+      // Clear input
+      todoInput.value = '';
+    }
+    
+    function toggleTodo(id) {
+      todos = todos.map(todo => {
+        if (todo.id === id) {
+          return { ...todo, completed: !todo.completed };
+        }
+        return todo;
+      });
+      
+      saveTodos();
+      renderTodos();
+    }
+    
+    function deleteTodo(id) {
+      todos = todos.filter(todo => todo.id !== id);
+      
+      if (todos.length === 0) {
+        todoList.innerHTML = `<li style="font-style: italic; opacity: 0.7;">{{ section.settings.empty_list_text }}</li>`;
+      } else {
+        renderTodos();
+      }
+      
+      saveTodos();
+    }
+    
+    function renderTodos() {
+      todoList.innerHTML = '';
+      
+      todos.forEach(todo => {
+        const li = document.createElement('li');
+        li.style.cssText = `
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 0.75rem;
+          margin-bottom: 0.5rem;
+          background-color: white;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+        `;
+        
+        const leftSide = document.createElement('div');
+        leftSide.style.display = 'flex';
+        leftSide.style.alignItems = 'center';
+        
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = todo.completed;
+        checkbox.style.marginRight = '0.75rem';
+        checkbox.addEventListener('change', () => toggleTodo(todo.id));
+        
+        const span = document.createElement('span');
+        span.textContent = todo.text;
+        if (todo.completed) {
+          span.style.textDecoration = 'line-through';
+          span.style.opacity = '0.6';
+        }
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.innerHTML = '&times;';
+        deleteBtn.style.cssText = `
+          background: none;
+          border: none;
+          color: #ff5555;
+          font-size: 1.2rem;
+          cursor: pointer;
+        `;
+        deleteBtn.addEventListener('click', () => deleteTodo(todo.id));
+        
+        leftSide.appendChild(checkbox);
+        leftSide.appendChild(span);
+        li.appendChild(leftSide);
+        li.appendChild(deleteBtn);
+        todoList.appendChild(li);
+      });
+    }
+    
+    function saveTodos() {
+      localStorage.setItem(`todos-${sectionId}`, JSON.stringify(todos));
+    }
+  });
+</script> 
