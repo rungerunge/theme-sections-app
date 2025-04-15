@@ -153,13 +153,19 @@
 
   <!-- Authentication Banner -->
   <div id="auth-banner" class="auth-banner">
-    <h2>Connect to your Shopify store</h2>
-    <p>To install custom sections into your theme, you need to connect this app to your Shopify store.</p>
-    <p>Please enter your shop name below:</p>
+    <h2>Select your Shopify store</h2>
+    <p>Choose your store from the list below to install sections:</p>
     <div style="display: flex; margin-top: 12px;">
-      <input type="text" id="shop-input" placeholder="your-store.myshopify.com" style="flex: 1; padding: 8px; border: 1px solid #c4cdd5; border-radius: 4px 0 0 4px; border-right: none;">
-      <button onclick="connectToShopify()" class="auth-button" style="border-radius: 0 4px 4px 0;">Connect</button>
+      <select id="store-select" style="flex: 1; padding: 8px; border: 1px solid #c4cdd5; border-radius: 4px 0 0 4px; border-right: none;">
+        <option value="">Select a store...</option>
+        <option value="okayscaledemo.myshopify.com">OkayScale Demo Store</option>
+        <!-- Add more stores as needed -->
+      </select>
+      <button onclick="selectStore()" class="auth-button" style="border-radius: 0 4px 4px 0;">Connect</button>
     </div>
+    <p class="note" style="margin-top: 12px; font-size: 12px; color: #637381;">
+      Note: This is a private app. If your store isn't listed, please contact the OkayScale support team.
+    </p>
   </div>
 
   <!-- Store Connection Info (initially hidden) -->
@@ -196,64 +202,50 @@
   <script>
     let selectedThemeId = null;
     
-    // Function to connect to Shopify
-    function connectToShopify() {
-      const shopInput = document.getElementById('shop-input').value.trim();
+    // Function to select a store
+    function selectStore() {
+      const storeSelect = document.getElementById('store-select');
+      const shop = storeSelect.value;
       
-      if (!shopInput) {
-        alert('Please enter your shop name');
+      if (!shop) {
+        alert('Please select a store');
         return;
       }
       
-      // Clean up shop name if needed
-      let shop = shopInput;
-      if (!shop.includes('.myshopify.com')) {
-        shop = shop + '.myshopify.com';
-      }
-      
-      // Redirect to auth endpoint
-      window.location.href = `/auth?shop=${shop}`;
-    }
-    
-    // Allow Enter key to submit
-    document.getElementById('shop-input').addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') {
-        connectToShopify();
-      }
-    });
-
-    // Function to check if we're authenticated
-    function checkAuthentication() {
-      // Get auth parameters from URL
-      const urlParams = new URLSearchParams(window.location.search);
-      const shop = urlParams.get('shop');
-      const accessToken = urlParams.get('token');
-      
-      if (shop && accessToken) {
-        // We have shop and token, hide auth banner and show store info
-        document.getElementById('auth-banner').classList.add('hidden');
-        document.getElementById('store-info').classList.remove('hidden');
-        document.getElementById('shop-name').textContent = shop;
-        
-        // Load themes for the connected store
-        loadThemes(shop, accessToken);
-      } else {
-        // Not authenticated, show auth banner
-        document.getElementById('auth-banner').classList.remove('hidden');
-        document.getElementById('store-info').classList.add('hidden');
-      }
+      // For private apps, we use a simplified connection
+      fetch(`/api/connect-store?shop=${shop}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            // Update UI
+            document.getElementById('auth-banner').classList.add('hidden');
+            document.getElementById('store-info').classList.remove('hidden');
+            document.getElementById('shop-name').textContent = shop;
+            
+            // Load themes for the connected store
+            loadThemes(shop);
+          } else {
+            alert(`Error connecting to store: ${data.error || 'Unknown error'}`);
+          }
+        })
+        .catch(error => {
+          alert(`Error connecting to store: ${error.message}`);
+        });
     }
 
     // Function to load themes from the store
-    async function loadThemes(shop, accessToken) {
+    async function loadThemes(shop) {
       try {
-        // In a real implementation, this would fetch themes from the Shopify API
-        // For now, let's use our demo themes
-        const themes = [
-          { id: 1, name: "Dawn (Current theme)", role: "main" },
-          { id: 2, name: "Minimal", role: "unpublished" },
-          { id: 3, name: "Venture", role: "unpublished" }
-        ];
+        // Fetch themes from our API endpoint
+        const response = await fetch(`/api/themes?shop=${shop}`);
+        const data = await response.json();
+        
+        if (!data.success) {
+          console.error('Error loading themes:', data.error);
+          return;
+        }
+        
+        const themes = data.themes;
         
         const themeSelect = document.getElementById('theme-select');
         themeSelect.innerHTML = ''; // Clear existing options
@@ -261,7 +253,7 @@
         themes.forEach(theme => {
           const option = document.createElement('option');
           option.value = theme.id;
-          option.textContent = theme.name;
+          option.textContent = theme.name + (theme.role === 'main' ? ' (Current theme)' : '');
           if (theme.role === 'main') {
             option.selected = true;
             selectedThemeId = theme.id;
@@ -283,16 +275,14 @@
       const resultPanel = document.getElementById('result');
       const resultContent = document.getElementById('result-content');
       
-      // Get auth parameters from URL
-      const urlParams = new URLSearchParams(window.location.search);
-      const shop = urlParams.get('shop');
-      const accessToken = urlParams.get('token');
+      // Get the selected store
+      const shop = document.getElementById('store-select').value;
       
       // Check if we're authenticated and have selected a theme
-      if (!shop || !accessToken) {
+      if (!shop) {
         resultPanel.style.display = 'block';
         resultPanel.classList.add('error');
-        resultContent.textContent = 'Error: Please connect to a Shopify store first';
+        resultContent.textContent = 'Error: Please select a store first';
         return;
       }
 
@@ -318,7 +308,6 @@
           body: JSON.stringify({
             sectionId,
             shop,
-            accessToken,
             themeId: selectedThemeId
           })
         });
@@ -343,8 +332,7 @@
       installSection('test-section');
     });
 
-    // Initialize the page
-    checkAuthentication();
+    // Initialize the page - don't auto-select
   </script>
 </body>
 </html> 
