@@ -11,12 +11,12 @@ import {
   Modal,
   Select,
   Thumbnail,
-  Box,
-  SkeletonBodyText,
+  Spinner,
   LegacyStack,
   Tag,
   ButtonGroup,
-  Spinner
+  BlockStack,
+  InlineStack
 } from "@shopify/polaris";
 import { ImageMajor } from '@shopify/polaris-icons';
 import { useNavigate } from "@remix-run/react";
@@ -173,12 +173,12 @@ export default function Index() {
           <Layout.Section>
             <LegacyCard sectioned>
               <LegacyCard.Section>
-                <Box padding="4">
+                <div style={{ padding: "16px" }}>
                   <Text as="p" fontWeight="bold">Loading themes...</Text>
                   <div style={{ textAlign: "center", margin: "40px 0" }}>
                     <Spinner accessibilityLabel="Loading themes" size="large" />
                   </div>
-                </Box>
+                </div>
               </LegacyCard.Section>
             </LegacyCard>
           </Layout.Section>
@@ -206,14 +206,14 @@ export default function Index() {
         )}
         
         <Layout.Section>
-          <Text variant="headingLg" as="h2">
-            Browse Available Sections
-          </Text>
-          <Box paddingBlock="4">
+          <BlockStack gap="4">
+            <Text variant="headingLg" as="h2">
+              Browse Available Sections
+            </Text>
             <Text variant="bodyMd" as="p">
               Add custom sections to your Shopify theme with one click. Select a section to preview and install.
             </Text>
-          </Box>
+          </BlockStack>
         </Layout.Section>
 
         <Layout.Section>
@@ -250,19 +250,19 @@ export default function Index() {
                   </LegacyCard.Section>
                   
                   <LegacyCard.Section>
-                    <Text variant="headingMd" as="h3">
-                      {section.title}
-                    </Text>
-                    <Box paddingBlockStart="2" paddingBlockEnd="2">
+                    <BlockStack gap="2">
+                      <Text variant="headingMd" as="h3">
+                        {section.title}
+                      </Text>
                       <Text variant="bodyMd" as="p" color="subdued">
                         {section.description}
                       </Text>
-                    </Box>
-                    <LegacyStack spacing="tight">
-                      {section.tags && section.tags.map(tag => (
-                        <Tag key={tag}>{tag}</Tag>
-                      ))}
-                    </LegacyStack>
+                      <LegacyStack spacing="tight">
+                        {section.tags && section.tags.map(tag => (
+                          <Tag key={tag}>{tag}</Tag>
+                        ))}
+                      </LegacyStack>
+                    </BlockStack>
                   </LegacyCard.Section>
                   
                   <LegacyCard.Section>
@@ -326,14 +326,14 @@ export default function Index() {
                 )}
               </div>
               
-              <div>
+              <BlockStack gap="4">
                 <Text variant="headingMd" as="h3">
                   {selectedSection.title}
                 </Text>
                 <Text variant="bodyMd" as="p">
                   {selectedSection.description}
                 </Text>
-              </div>
+              </BlockStack>
               
               <Select
                 label="Select theme"
