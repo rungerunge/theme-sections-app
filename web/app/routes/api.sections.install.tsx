@@ -6,11 +6,13 @@ import path from 'path';
 
 interface RequestBody {
   sectionId: string;
+  themeId?: string; // Optional theme ID (defaults to active theme if not provided)
 }
 
 interface Theme {
   id: number;
   role: string;
+  name: string;
 }
 
 interface ThemesResponse {
@@ -19,7 +21,7 @@ interface ThemesResponse {
 
 export const action: ActionFunction = async ({ request }) => {
   const { admin } = await authenticate.admin(request);
-  const { sectionId } = await request.json() as RequestBody;
+  const { sectionId, themeId } = await request.json() as RequestBody;
 
   try {
     // Read the section template
@@ -28,21 +30,29 @@ export const action: ActionFunction = async ({ request }) => {
       'utf8'
     );
 
-    // Get the active theme
-    const response = await admin.rest.get({
-      path: 'themes',
-    });
-    const { data: themes } = response as unknown as ThemesResponse;
-    
-    const activeTheme = themes.find((theme) => theme.role === 'main');
+    let targetThemeId: number;
 
-    if (!activeTheme) {
-      throw new Error('No active theme found');
+    // If themeId is provided, use it; otherwise, get the active theme
+    if (themeId) {
+      targetThemeId = parseInt(themeId, 10);
+    } else {
+      // Get the active theme
+      const response = await admin.rest.get({
+        path: 'themes',
+      });
+      const { data: themes } = response as unknown as ThemesResponse;
+      
+      const activeTheme = themes.find((theme) => theme.role === 'main');
+      if (!activeTheme) {
+        throw new Error('No active theme found');
+      }
+      
+      targetThemeId = activeTheme.id;
     }
 
     // Add the section to the theme
     await admin.rest.put({
-      path: `themes/${activeTheme.id}/assets`,
+      path: `themes/${targetThemeId}/assets`,
       data: {
         asset: {
           key: `sections/${sectionId}.liquid`,
