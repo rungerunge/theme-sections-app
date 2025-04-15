@@ -28,7 +28,7 @@ app.use(express.urlencoded({ extended: true }));
 const SHOPIFY_API_KEY = process.env.SHOPIFY_API_KEY || 'your_api_key';
 const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET || 'your_api_secret';
 const HOST = process.env.HOST || 'https://theme-sections-app-chjk.onrender.com';
-const SCOPES = process.env.SCOPES || 'read_themes,write_themes,write_products,write_customers,write_draft_orders,write_content';
+const SCOPES = process.env.SCOPES || 'read_themes,write_themes,read_content,write_content,read_products,write_products';
 
 // Private app credentials - store tokens securely
 const PRIVATE_APP_TOKENS = {
@@ -146,7 +146,10 @@ app.post('/api/sections/install', async (req, res) => {
     // Get the access token for this shop from our private tokens
     const accessToken = PRIVATE_APP_TOKENS[shop];
     if (!accessToken) {
-      return res.status(404).json({ error: 'Store not authorized' });
+      return res.status(404).json({ 
+        error: 'Store not authorized',
+        message: 'Please connect your store first by clicking "Connect" on the pre-configured store or installing the app via the Shopify App Store.'
+      });
     }
     
     console.log(`Processing installation for shop: ${shop}, section: ${sectionId}, themeId: ${themeId}`);
@@ -165,12 +168,35 @@ app.post('/api/sections/install', async (req, res) => {
       const sectionsDir = path.join(process.cwd(), 'sections');
       if (fs.existsSync(sectionsDir)) {
         console.log('Available sections:', fs.readdirSync(sectionsDir));
+        
+        // Try to find the section file with a different directory structure
+        const sections = fs.readdirSync(sectionsDir);
+        let alternativePath = null;
+        
+        for (const section of sections) {
+          const potentialPath = path.join(sectionsDir, section, 'section.liquid');
+          if (fs.existsSync(potentialPath)) {
+            console.log(`Found alternative section file at ${potentialPath}`);
+            alternativePath = potentialPath;
+            break;
+          }
+        }
+        
+        if (alternativePath) {
+          sectionContent = fs.readFileSync(alternativePath, 'utf8');
+        } else {
+          return res.status(404).json({ 
+            error: 'Section not found',
+            message: 'The specified section could not be found. Please check the section ID and try again.',
+            availableSections: sections 
+          });
+        }
+      } else {
+        return res.status(404).json({ 
+          error: 'Sections directory not found',
+          message: 'The sections directory could not be found. Please check your app configuration.'
+        });
       }
-      
-      return res.status(404).json({ 
-        error: 'Section not found',
-        availableSections: fs.existsSync(sectionsDir) ? fs.readdirSync(sectionsDir) : [] 
-      });
     }
     
     try {
@@ -347,7 +373,7 @@ app.get('/section-preview/:sectionId', (req, res) => {
   }
 });
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3001;
 app.listen(port, '0.0.0.0', () => {
   console.log(`Simple Express server running on port ${port}`);
 }); 

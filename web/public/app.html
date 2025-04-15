@@ -221,19 +221,169 @@
       </div>
     </div>
     <div class="section-card">
-      <h3>Todo List</h3>
       <div class="section-image">
         <img src="/section-preview/todo-list" alt="Todo List Section Preview" />
       </div>
-      <p>Add a customizable todo list to your store</p>
-      <div class="section-actions">
-        <a href="/preview/todo-list" class="btn btn-secondary" target="_blank">Preview</a>
-        <button class="btn btn-primary" data-section="todo-list">Install</button>
+      <div class="section-content">
+        <h3 class="section-title">Todo List</h3>
+        <p class="section-description">Add a customizable todo list to your store</p>
+        <div class="section-tags">
+          <span class="tag">Interactive</span>
+          <span class="tag">Utility</span>
+        </div>
+        <button class="install-button" data-section="todo-list">Install Section</button>
+        <div class="result-panel" id="todo-result">
+          <h4>Installation Result</h4>
+          <pre id="todo-result-content"></pre>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
     let selectedThemeId = null;
+    let connectedShop = null;
     
-    // Function to
+    // Function to handle section installation
+    function installSection(sectionId) {
+      // Check if we have a shop connected
+      if (!connectedShop) {
+        alert('Please connect to a Shopify store first');
+        document.getElementById('auth-banner').scrollIntoView();
+        return;
+      }
+      
+      // Show loading state
+      const button = document.querySelector(`button[data-section="${sectionId}"]`);
+      const originalText = button.textContent;
+      button.textContent = 'Installing...';
+      button.disabled = true;
+      
+      // Call the API to install the section
+      fetch('/api/sections/install', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          sectionId: sectionId,
+          shop: connectedShop,
+          themeId: selectedThemeId
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          alert(`Section "${sectionId}" successfully installed to theme "${data.themeName}"`);
+        } else {
+          alert(`Error: ${data.error || 'Unknown error'}`);
+          console.error('Installation error:', data);
+        }
+      })
+      .catch(error => {
+        alert('Error installing section: ' + error.message);
+        console.error('Installation error:', error);
+      })
+      .finally(() => {
+        // Reset button state
+        button.textContent = originalText;
+        button.disabled = false;
+      });
+    }
+    
+    // Add click event listeners to all install buttons
+    document.addEventListener('DOMContentLoaded', function() {
+      // Setup installation buttons
+      document.querySelectorAll('.install-button').forEach(button => {
+        button.addEventListener('click', function() {
+          const sectionId = this.getAttribute('data-section');
+          installSection(sectionId);
+        });
+      });
+      
+      // Other initialization code...
+    });
+    
+    // Function to select a store
+    function selectStore() {
+      const shopDomain = document.getElementById('store-select').value;
+      
+      if (!shopDomain) {
+        alert('Please select a store');
+        return;
+      }
+      
+      fetch(`/api/connect-store?shop=${shopDomain}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            connectedShop = shopDomain;
+            document.getElementById('auth-banner').classList.add('hidden');
+            document.getElementById('store-info').classList.remove('hidden');
+            document.getElementById('shop-name').textContent = shopDomain;
+            
+            // Load themes
+            loadThemes(shopDomain);
+          } else {
+            alert('Error connecting to store: ' + (data.message || 'Unknown error'));
+          }
+        })
+        .catch(error => {
+          alert('Error connecting to store: ' + error.message);
+        });
+    }
+    
+    // Function to load themes for a shop
+    function loadThemes(shop) {
+      fetch(`/api/themes?shop=${shop}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            const selectEl = document.getElementById('theme-select');
+            selectEl.innerHTML = '';
+            
+            data.themes.forEach(theme => {
+              const option = document.createElement('option');
+              option.value = theme.id;
+              option.textContent = `${theme.name}${theme.role === 'main' ? ' (active)' : ''}`;
+              option.selected = theme.role === 'main';
+              selectEl.appendChild(option);
+            });
+            
+            // Set the selected theme ID
+            selectedThemeId = selectEl.value;
+            
+            // Add change listener
+            selectEl.addEventListener('change', function() {
+              selectedThemeId = this.value;
+            });
+          } else {
+            document.getElementById('theme-select').innerHTML = '<option value="">Error loading themes</option>';
+          }
+        })
+        .catch(error => {
+          document.getElementById('theme-select').innerHTML = '<option value="">Error loading themes</option>';
+        });
+    }
+    
+    // Function to update shop URL in the install link
+    function updateShopUrl() {
+      const shopInput = document.getElementById('shop-input').value.trim();
+      if (!shopInput) {
+        alert('Please enter your shop domain');
+        return false;
+      }
+      
+      // Format shop domain if needed
+      let formattedShop = shopInput;
+      if (!formattedShop.includes('.myshopify.com')) {
+        formattedShop += '.myshopify.com';
+      }
+      
+      const installLink = document.getElementById('install-link');
+      installLink.href = `/auth?shop=${formattedShop}`;
+      return true;
+    }
+  </script>
+</body>
+</html>
