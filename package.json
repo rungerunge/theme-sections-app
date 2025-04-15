@@ -8,7 +8,7 @@
   "scripts": {
     "build": "cd web && remix build --config remix.config.js",
     "dev": "shopify app dev",
-    "start": "node server.js",
+    "start": "node start.js",
     "lint": "eslint --cache --cache-location ./node_modules/.cache/eslint .",
     "shopify": "shopify",
     "generate": "shopify app generate"
