@@ -1,0 +1,125 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Shopify Private App - Section Library Integration (OkayScale)
+
+## Overview
+This private Shopify app is developed for OkayScale's marketing clients. It allows them to browse a curated library of custom Shopify sections and add selected sections directly into their active or development theme via a simple UI. This app acts similarly to the "Section Store" app but is designed for private use only.
+
+Once you are done with changes, make sure to always push the changes to github repo. 
+---
+
+## Core Features
+
+### 1. Theme Library
+- After authentication, the app fetches the list of themes from the store using Shopify Admin API.
+- Both published and unpublished themes are shown in the dropdown.
+- The current live theme is highlighted.
+
+### 2. Section Selection
+- Users can browse through a categorized library of pre-designed sections.
+- Each section includes:
+  - A visual preview
+  - Section name
+  - Price (if monetized later)
+  - "Add Section" button
+
+### 3. Add to Theme Flow
+- When clicking **Add Section**, a dropdown appears allowing the user to:
+  - Select the destination theme
+  - Confirm and execute the action
+- Once confirmed:
+  - The app injects the selected section's `.liquid` file into the `/sections` directory of the chosen theme.
+  - Optionally adds any necessary CSS or JS to the theme assets if required (can be modularized).
+  - Optionally updates `config/settings_schema.json` or `config/settings_data.json` if global schema changes are needed (typically avoided).
+
+---
+
+## Authentication (Auth Guide)
+
+### Auth Type: OAuth 2.0 (with Shopify Admin API)
+
+### Required Permissions (Scopes):
+```bash
+read_themes
+write_themes
+read_script_tags
+write_script_tags
+read_files
+write_files
+```
+
+### OAuth Flow (Server-Side)
+1. **Install Redirect**:
+   Shopify redirects the merchant to your app's OAuth URL when they install it.
+
+2. **Permission Grant Page**:
+   Shopify displays all permissions to be approved by the user.
+
+3. **Callback**:
+   After approval, Shopify sends a `code` and `hmac` to your app's callback URL.
+
+4. **Access Token Request**:
+   Exchange the `code` for a permanent `access_token`.
+
+5. **Store Session**:
+   Save the `access_token` and `shop` info securely in your backend.
+
+> Note: Always verify the `hmac` to avoid forgery.
+
+---
+
+## API Usage
+
+### Fetching Themes
+```http
+GET /admin/api/2023-10/themes.json
+```
+
+### Uploading Section File
+```http
+PUT /admin/api/2023-10/themes/{theme_id}/assets.json
+{
+  "asset": {
+    "key": "sections/section-name.liquid",
+    "value": "{{ section.liquid content here }}"
+  }
+}
+```
+
+### Optional: Add Settings Schema
+```http
+PUT /admin/api/2023-10/themes/{theme_id}/assets.json
+{
+  "asset": {
+    "key": "config/settings_schema.json",
+    "value": "{ modified schema content }"
+  }
+}
+```
+
+---
+
+## Security Tips
+- Sanitize file inputs to prevent injection
+- Never allow overwriting existing section files without confirmation
+- Use webhooks for theme deletion or store uninstalls
+
+---
+
+## Future Add-ons (optional roadmap)
+- Monetization (via Stripe or Shopify Billing API)
+- Section preview in live store environment
+- Section versioning and rollback
+- Filtering by section types (hero, testimonial, product, etc.)
+
+---
+
+## Cursor AI Notes
+Whenever referencing the app's setup or implementation in Cursor AI:
+- Point to this README as the central logic and reference doc
+- Emphasize the importance of correct **OAuth scopes** and **theme injection structure**
+- Authentication must be **bulletproof** — validate tokens, check store domains, and never allow API calls without secure verification
+
