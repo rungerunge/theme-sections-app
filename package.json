@@ -6,20 +6,14 @@
   "main": "simple-server.js",
   "license": "UNLICENSED",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest --passWithNoTests .",
     "start": "node simple-server.js",
     "dev": "cd web && npm run dev",
-    "build": "NODE_ENV=production npm run build:client",
-    "build:client": "vite build --outDir dist/client",
-    "debug": "NODE_OPTIONS='--inspect' npm run dev",
-    "prepare": "husky install",
-    "preserve": "npm run build",
-    "serve": "cross-env NODE_ENV=production node --experimental-modules index.js",
-    "shopify": "shopify",
-    "shopify:app": "node --experimental-modules index.js",
+    "build": "node build.js",
+    "shopify": "cd web && npm run shopify",
     "version-check": "node version-check.js",
     "lint": "eslint --cache --cache-location ./node_modules/.cache/eslint .",
-    "generate": "shopify app generate"
+    "codegen": "shopify app codegen"
   },
   "keywords": [
     "shopify",
