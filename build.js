@@ -132,8 +132,33 @@ async function build() {
     // Build the Remix app
     console.log('Building Remix app...');
     
-    // First ensure the web directory has its dependencies
+    // First ensure the web directory has its dependencies and MDX-related packages
+    console.log('Installing web dependencies...');
     run('npm install --no-audit --loglevel=error', webDir);
+    
+    // Install specific MDX dependencies that might be needed
+    console.log('Installing MDX dependencies...');
+    run('npm install --no-audit --loglevel=error xdm@3.0.0 isbot@3.6.8', webDir);
+    
+    // Create an empty remix.config.js if it doesn't exist
+    const remixConfigPath = path.join(webDir, 'remix.config.js');
+    if (!fs.existsSync(remixConfigPath)) {
+      console.log('Creating minimal remix.config.js...');
+      fs.writeFileSync(
+        remixConfigPath,
+        `/**
+ * @type {import('@remix-run/dev').AppConfig}
+ */
+module.exports = {
+  ignoredRouteFiles: ["**/.*"],
+  appDirectory: "app",
+  assetsBuildDirectory: "public/build",
+  serverBuildPath: "build/index.js",
+  publicPath: "/build/"
+};
+`
+      );
+    }
     
     // Then build using Remix directly (avoiding Shopify CLI)
     run('npx remix build', webDir);

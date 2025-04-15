@@ -8,4 +8,5 @@ module.exports = {
   assetsBuildDirectory: "../public/build",
   publicPath: "/build/",
   serverDependenciesToBundle: ["@shopify/shopify-app-remix", /@shopify\/shopify-api.*/],
+  mdx: false
 }; 
