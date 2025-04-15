@@ -153,9 +153,13 @@
 
   <!-- Authentication Banner -->
   <div id="auth-banner" class="auth-banner">
-    <div class="connect-status">Not connected to any Shopify store</div>
-    <p>You need to connect to a Shopify store before installing sections.</p>
-    <a href="/auth?shop=okayscaledemo.myshopify.com" class="auth-button">Connect to Shopify Store</a>
+    <h2>Connect to your Shopify store</h2>
+    <p>To install custom sections into your theme, you need to connect this app to your Shopify store.</p>
+    <p>Please enter your shop name below:</p>
+    <div style="display: flex; margin-top: 12px;">
+      <input type="text" id="shop-input" placeholder="your-store.myshopify.com" style="flex: 1; padding: 8px; border: 1px solid #c4cdd5; border-radius: 4px 0 0 4px; border-right: none;">
+      <button onclick="connectToShopify()" class="auth-button" style="border-radius: 0 4px 4px 0;">Connect</button>
+    </div>
   </div>
 
   <!-- Store Connection Info (initially hidden) -->
@@ -190,26 +194,61 @@
   </div>
 
   <script>
-    // Set default values for demo purposes
-    let shop = 'okayscaledemo.myshopify.com';
-    let accessToken = 'demo-access-token';
-    let selectedThemeId = 1;
+    let selectedThemeId = null;
+    
+    // Function to connect to Shopify
+    function connectToShopify() {
+      const shopInput = document.getElementById('shop-input').value.trim();
+      
+      if (!shopInput) {
+        alert('Please enter your shop name');
+        return;
+      }
+      
+      // Clean up shop name if needed
+      let shop = shopInput;
+      if (!shop.includes('.myshopify.com')) {
+        shop = shop + '.myshopify.com';
+      }
+      
+      // Redirect to auth endpoint
+      window.location.href = `/auth?shop=${shop}`;
+    }
+    
+    // Allow Enter key to submit
+    document.getElementById('shop-input').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        connectToShopify();
+      }
+    });
 
     // Function to check if we're authenticated
     function checkAuthentication() {
-      // Always show as connected for the demo
-      document.getElementById('auth-banner').classList.add('hidden');
-      document.getElementById('store-info').classList.remove('hidden');
-      document.getElementById('shop-name').textContent = shop;
+      // Get auth parameters from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const shop = urlParams.get('shop');
+      const accessToken = urlParams.get('token');
       
-      // Load themes for the connected store
-      loadThemes();
+      if (shop && accessToken) {
+        // We have shop and token, hide auth banner and show store info
+        document.getElementById('auth-banner').classList.add('hidden');
+        document.getElementById('store-info').classList.remove('hidden');
+        document.getElementById('shop-name').textContent = shop;
+        
+        // Load themes for the connected store
+        loadThemes(shop, accessToken);
+      } else {
+        // Not authenticated, show auth banner
+        document.getElementById('auth-banner').classList.remove('hidden');
+        document.getElementById('store-info').classList.add('hidden');
+      }
     }
 
     // Function to load themes from the store
-    async function loadThemes() {
+    async function loadThemes(shop, accessToken) {
       try {
-        // Hardcoded themes for demo
+        // In a real implementation, this would fetch themes from the Shopify API
+        // For now, let's use our demo themes
         const themes = [
           { id: 1, name: "Dawn (Current theme)", role: "main" },
           { id: 2, name: "Minimal", role: "unpublished" },
@@ -243,6 +282,11 @@
     async function installSection(sectionId) {
       const resultPanel = document.getElementById('result');
       const resultContent = document.getElementById('result-content');
+      
+      // Get auth parameters from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const shop = urlParams.get('shop');
+      const accessToken = urlParams.get('token');
       
       // Check if we're authenticated and have selected a theme
       if (!shop || !accessToken) {
