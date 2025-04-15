@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Section Store</title>
+  <link rel="stylesheet" href="https://unpkg.com/@shopify/polaris@11.1.2/build/esm/styles.css">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    .section-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .section-card {
+      border-radius: 8px;
+      box-shadow: 0 0 0 1px rgba(63, 63, 68, 0.05), 0 1px 3px 0 rgba(63, 63, 68, 0.15);
+      overflow: hidden;
+      background: white;
+    }
+    .section-image {
+      width: 100%;
+      height: 180px;
+      object-fit: cover;
+      background-color: #f4f6f8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .section-content {
+      padding: 16px;
+    }
+    .section-title {
+      margin: 0 0 8px 0;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .section-description {
+      margin: 0 0 16px 0;
+      color: #6d7175;
+      font-size: 14px;
+    }
+    .section-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .tag {
+      background-color: #f4f6f8;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 12px;
+      color: #202223;
+    }
+    .install-button {
+      width: 100%;
+      padding: 8px 16px;
+      background-color: #5c6ac4;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .install-button:hover {
+      background-color: #4959bd;
+    }
+    .header {
+      background-color: #fff;
+      padding: 20px;
+      border-bottom: 1px solid #ddd;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 28px;
+      color: #212b36;
+    }
+    .header p {
+      margin: 8px 0 0 0;
+      color: #6d7175;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="container">
+      <h1>Section Store</h1>
+      <p>Add custom sections to your Shopify theme with one click</p>
+    </div>
+  </div>
+  
+  <div class="section-grid">
+    <div class="section-card">
+      <div class="section-image">
+        <img src="/section-previews/featured-collection.png" alt="Featured Collection" onerror="this.src='https://burst.shopifycdn.com/photos/business-woman-smiling-in-office.jpg?width=500'; this.onerror=null;">
+      </div>
+      <div class="section-content">
+        <h3 class="section-title">Featured Collection</h3>
+        <p class="section-description">Display a collection of products in a grid layout. Perfect for showcasing your best products on any page.</p>
+        <div class="section-tags">
+          <span class="tag">Products</span>
+          <span class="tag">Featured</span>
+          <span class="tag">Grid</span>
+        </div>
+        <button class="install-button" onclick="alert('Section installation will be available soon!')">Preview & Install</button>
+      </div>
+    </div>
+    
+    <div class="section-card">
+      <div class="section-image">
+        <img src="/section-previews/hero-banner.png" alt="Hero Banner" onerror="this.src='https://burst.shopifycdn.com/photos/blue-orange-and-pink-shopping-bags.jpg?width=500'; this.onerror=null;">
+      </div>
+      <div class="section-content">
+        <h3 class="section-title">Hero Banner</h3>
+        <p class="section-description">A full-width banner with text overlay and call-to-action button. Great for announcing promotions or new collections.</p>
+        <div class="section-tags">
+          <span class="tag">Banner</span>
+          <span class="tag">Hero</span>
+          <span class="tag">Marketing</span>
+        </div>
+        <button class="install-button" onclick="alert('Section installation will be available soon!')">Preview & Install</button>
+      </div>
+    </div>
+    
+    <div class="section-card">
+      <div class="section-image">
+        <img src="/section-previews/test-section.png" alt="Test Section" onerror="this.src='https://burst.shopifycdn.com/photos/flatlay-iron-skillet-with-meat-vegetables.jpg?width=500'; this.onerror=null;">
+      </div>
+      <div class="section-content">
+        <h3 class="section-title">Test Section</h3>
+        <p class="section-description">A simple test section with configurable heading and content. Use this to experiment with the section capabilities.</p>
+        <div class="section-tags">
+          <span class="tag">Test</span>
+          <span class="tag">Simple</span>
+          <span class="tag">Configurable</span>
+        </div>
+        <button class="install-button" onclick="alert('Section installation will be available soon!')">Preview & Install</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html> 
