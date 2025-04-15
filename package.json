@@ -6,7 +6,7 @@
   "main": "web/index.js",
   "license": "UNLICENSED",
   "scripts": {
-    "build": "remix build",
+    "build": "cd web && remix build --config remix.config.js",
     "dev": "shopify app dev",
     "start": "remix-serve build",
     "lint": "eslint --cache --cache-location ./node_modules/.cache/eslint .",
