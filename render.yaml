@@ -12,6 +12,6 @@ services:
       - key: SHOPIFY_API_SECRET
         value: a750fba3926ae2137fdac14dff34631c
       - key: SCOPES
-        value: write_products,write_customers,write_draft_orders,write_themes,write_content
+        value: read_themes,write_themes,write_products,write_customers,write_draft_orders,write_content
       - key: PORT
         value: 3000 
