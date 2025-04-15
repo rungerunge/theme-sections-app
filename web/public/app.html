@@ -106,6 +106,41 @@
       background-color: #fbeae5;
       border-left: 4px solid #de3618;
     }
+    .auth-banner {
+      background-color: #fdf8e3;
+      border-left: 4px solid #eec200;
+      padding: 16px;
+      margin: 20px;
+      border-radius: 4px;
+      max-width: 1200px;
+      margin: 20px auto;
+    }
+    .auth-button {
+      background-color: #5c6ac4;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      margin-top: 10px;
+    }
+    .theme-select {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 16px;
+      border: 1px solid #c4cdd5;
+      border-radius: 4px;
+    }
+    .connect-status {
+      font-weight: 500;
+      margin-bottom: 10px;
+    }
+    .hidden {
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -114,6 +149,22 @@
       <h1>Section Store</h1>
       <p>Add custom sections to your Shopify theme with one click</p>
     </div>
+  </div>
+
+  <!-- Authentication Banner -->
+  <div id="auth-banner" class="auth-banner">
+    <div class="connect-status">Not connected to any Shopify store</div>
+    <p>You need to connect to a Shopify store before installing sections.</p>
+    <a href="/auth?shop=okayscaledemo.myshopify.com" class="auth-button">Connect to Shopify Store</a>
+  </div>
+
+  <!-- Store Connection Info (initially hidden) -->
+  <div id="store-info" class="auth-banner hidden">
+    <div id="connected-store" class="connect-status">Connected to: <span id="shop-name">-</span></div>
+    <label for="theme-select">Select theme for installation:</label>
+    <select id="theme-select" class="theme-select">
+      <option value="">Loading themes...</option>
+    </select>
   </div>
   
   <div class="section-grid">
@@ -139,10 +190,74 @@
   </div>
 
   <script>
+    // Set default values for demo purposes
+    let shop = 'okayscaledemo.myshopify.com';
+    let accessToken = 'demo-access-token';
+    let selectedThemeId = 1;
+
+    // Function to check if we're authenticated
+    function checkAuthentication() {
+      // Always show as connected for the demo
+      document.getElementById('auth-banner').classList.add('hidden');
+      document.getElementById('store-info').classList.remove('hidden');
+      document.getElementById('shop-name').textContent = shop;
+      
+      // Load themes for the connected store
+      loadThemes();
+    }
+
+    // Function to load themes from the store
+    async function loadThemes() {
+      try {
+        // Hardcoded themes for demo
+        const themes = [
+          { id: 1, name: "Dawn (Current theme)", role: "main" },
+          { id: 2, name: "Minimal", role: "unpublished" },
+          { id: 3, name: "Venture", role: "unpublished" }
+        ];
+        
+        const themeSelect = document.getElementById('theme-select');
+        themeSelect.innerHTML = ''; // Clear existing options
+        
+        themes.forEach(theme => {
+          const option = document.createElement('option');
+          option.value = theme.id;
+          option.textContent = theme.name;
+          if (theme.role === 'main') {
+            option.selected = true;
+            selectedThemeId = theme.id;
+          }
+          themeSelect.appendChild(option);
+        });
+        
+        // Add event listener to update selectedThemeId when changed
+        themeSelect.addEventListener('change', function() {
+          selectedThemeId = this.value;
+        });
+      } catch (error) {
+        console.error('Error loading themes:', error);
+      }
+    }
+
     // Function to install a section
     async function installSection(sectionId) {
       const resultPanel = document.getElementById('result');
       const resultContent = document.getElementById('result-content');
+      
+      // Check if we're authenticated and have selected a theme
+      if (!shop || !accessToken) {
+        resultPanel.style.display = 'block';
+        resultPanel.classList.add('error');
+        resultContent.textContent = 'Error: Please connect to a Shopify store first';
+        return;
+      }
+
+      if (!selectedThemeId) {
+        resultPanel.style.display = 'block';
+        resultPanel.classList.add('error');
+        resultContent.textContent = 'Error: Please select a theme for installation';
+        return;
+      }
       
       // Show the result panel
       resultPanel.style.display = 'block';
@@ -150,11 +265,6 @@
       resultContent.textContent = 'Installing section...';
       
       try {
-        // Get shop and token from URL params or use defaults
-        const urlParams = new URLSearchParams(window.location.search);
-        const shop = urlParams.get('shop') || 'okayscaledemo.myshopify.com';
-        const accessToken = urlParams.get('token') || 'placeholder-token';
-        
         // Make API call to install section
         const response = await fetch('/api/sections/install', {
           method: 'POST',
@@ -164,7 +274,8 @@
           body: JSON.stringify({
             sectionId,
             shop,
-            accessToken
+            accessToken,
+            themeId: selectedThemeId
           })
         });
         
@@ -187,6 +298,9 @@
     document.getElementById('install-test-section').addEventListener('click', () => {
       installSection('test-section');
     });
+
+    // Initialize the page
+    checkAuthentication();
   </script>
 </body>
 </html> 
