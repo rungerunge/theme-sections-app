@@ -10,7 +10,7 @@ scopes = "read_themes,write_themes,read_files,write_files"
 [auth]
 # Redirect URL for auth callback
 redirect_urls = [
-  "https://theme-sections-app-chjk.onrender.com/auth/callback"
+  "https://theme-sections-app.onrender.com/auth/callback"
 ]
 
 [webhooks]

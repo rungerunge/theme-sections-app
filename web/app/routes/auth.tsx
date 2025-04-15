@@ -14,7 +14,14 @@ export async function loader({ request }) {
     return new Response("Invalid shop parameter", { status: 400 });
   }
 
-  return await authenticate.beginAuth(request);
+  try {
+    // Start the OAuth process
+    const authRoute = await authenticate.admin(request);
+    return redirect(authRoute.url);
+  } catch (error) {
+    console.error("Auth error:", error);
+    return new Response("Authentication failed", { status: 500 });
+  }
 }
 
 export default function Auth() {
