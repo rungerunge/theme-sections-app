@@ -16,11 +16,16 @@ export async function loader({ request }) {
 
   try {
     // Start the OAuth process
-    const authRoute = await authenticate.admin(request);
-    return redirect(authRoute.url);
+    const { session } = await authenticate.admin(request);
+    return redirect(`/app?shop=${session.shop}`);
   } catch (error) {
-    console.error("Auth error:", error);
-    return new Response("Authentication failed", { status: 500 });
+    // If we get here, we likely need to start the OAuth flow
+    const authUrl = `https://${shop}/admin/oauth/authorize?` + 
+      `client_id=${process.env.SHOPIFY_API_KEY}&` +
+      `scope=${process.env.SCOPES}&` +
+      `redirect_uri=${process.env.HOST}/auth/callback`;
+    
+    return redirect(authUrl);
   }
 }
 
