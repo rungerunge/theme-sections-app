@@ -1,6 +1,6 @@
 import { json } from "@remix-run/node";
 import type { ActionFunction } from "@remix-run/node";
-import { authenticate } from "../../shopify.server";
+import { authenticate } from "../shopify.server";
 import fs from 'fs/promises';
 import path from 'path';
 
