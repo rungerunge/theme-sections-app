@@ -5,12 +5,12 @@
 # API version that your app is using
 api_version = "2024-01"
 # Scopes your app needs
-scopes = "read_themes,write_themes,read_files,write_files"
+scopes = "read_themes,write_themes,read_files,write_files,read_content,write_content,read_products,write_products,read_script_tags,write_script_tags"
 
 [auth]
 # Redirect URL for auth callback
 redirect_urls = [
-  "https://theme-sections-app.onrender.com/auth/callback"
+  "https://theme-sections-app-chjk.onrender.com/auth/callback"
 ]
 
 [webhooks]

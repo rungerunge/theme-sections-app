@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OkayScale Section Store</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .header {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .section-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: transform 0.2s;
+            margin-bottom: 20px;
+            background-color: #fff;
+            height: 100%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .section-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .section-preview {
+            height: 200px;
+            background-color: #f8f8f8;
+            background-size: cover;
+            background-position: center;
+            border-bottom: 1px solid #eee;
+        }
+        .section-info {
+            padding: 15px;
+        }
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        .section-price {
+            font-size: 16px;
+            color: #34d399;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        .btn-add-section {
+            background-color: #5046e5;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            width: 100%;
+        }
+        .btn-add-section:hover {
+            background-color: #4338ca;
+        }
+        .btn-add-to-theme {
+            background-color: #34d399;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            width: 100%;
+        }
+        .btn-add-to-theme:hover {
+            background-color: #10b981;
+        }
+        .theme-selector {
+            width: 100%;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #e2e8f0;
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1000;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: opacity 0.3s, transform 0.3s;
+        }
+        .notification.success {
+            background-color: #34d399;
+            color: white;
+        }
+        .notification.error {
+            background-color: #f87171;
+            color: white;
+        }
+        .notification.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .category-filters {
+            display: flex;
+            overflow-x: auto;
+            gap: 10px;
+            padding: 10px 0;
+            margin-bottom: 20px;
+        }
+        .category-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 100px;
+            text-align: center;
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 8px;
+            transition: background-color 0.2s;
+        }
+        .category-item:hover {
+            background-color: #f1f5f9;
+        }
+        .category-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        .category-text {
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .search-container {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        .search-input {
+            width: 100%;
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            padding-left: 40px;
+        }
+        .search-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+        }
+        .tab-container {
+            margin-bottom: 20px;
+        }
+        .tab-nav {
+            display: flex;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .tab-button {
+            padding: 10px 20px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-weight: 500;
+            color: #64748b;
+            border-bottom: 2px solid transparent;
+        }
+        .tab-button.active {
+            color: #5046e5;
+            border-bottom: 2px solid #5046e5;
+        }
+        .tab-content {
+            display: none;
+            padding: 20px 0;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .section-tag {
+            display: inline-block;
+            background-color: #f1f5f9;
+            color: #64748b;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-right: 5px;
+            margin-bottom: 10px;
+        }
+        .my-sections-empty {
+            text-align: center;
+            padding: 40px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .section-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #34d399;
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 4px;
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1><i class="fa-solid fa-cube me-2"></i> Section Store</h1>
+                <div>
+                    <select id="theme-dropdown" class="form-select">
+                        <option value="" selected>Select Theme...</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-container">
+            <div class="tab-nav">
+                <button class="tab-button active" data-tab="explore">Explore Sections</button>
+                <button class="tab-button" data-tab="my-sections">My Sections</button>
+            </div>
+            
+            <div id="explore-tab" class="tab-content active">
+                <div class="search-container">
+                    <i class="fa-solid fa-search search-icon"></i>
+                    <input type="text" id="search-input" class="search-input" placeholder="Search for sections">
+                </div>
+                
+                <div class="category-filters">
+                    <div class="category-item" data-category="all">
+                        <i class="fa-solid fa-star category-icon"></i>
+                        <span class="category-text">Popular</span>
+                    </div>
+                    <div class="category-item" data-category="trending">
+                        <i class="fa-solid fa-fire category-icon"></i>
+                        <span class="category-text">Trending</span>
+                    </div>
+                    <div class="category-item" data-category="newest">
+                        <i class="fa-solid fa-certificate category-icon"></i>
+                        <span class="category-text">Newest</span>
+                    </div>
+                    <div class="category-item" data-category="free">
+                        <i class="fa-solid fa-gift category-icon"></i>
+                        <span class="category-text">Free</span>
+                    </div>
+                    <div class="category-item" data-category="features">
+                        <i class="fa-solid fa-gem category-icon"></i>
+                        <span class="category-text">Features</span>
+                    </div>
+                    <div class="category-item" data-category="testimonial">
+                        <i class="fa-solid fa-comment category-icon"></i>
+                        <span class="category-text">Testimonial</span>
+                    </div>
+                    <div class="category-item" data-category="hero">
+                        <i class="fa-solid fa-image category-icon"></i>
+                        <span class="category-text">Hero</span>
+                    </div>
+                    <div class="category-item" data-category="video">
+                        <i class="fa-solid fa-play category-icon"></i>
+                        <span class="category-text">Video</span>
+                    </div>
+                    <div class="category-item" data-category="faq">
+                        <i class="fa-solid fa-question category-icon"></i>
+                        <span class="category-text">FAQ</span>
+                    </div>
+                </div>
+                
+                <div id="explore-sections" class="row">
+                    <!-- Sections will be populated here -->
+                </div>
+                
+                <div id="loading" class="loading">
+                    <p>Loading sections library...</p>
+                </div>
+            </div>
+            
+            <div id="my-sections-tab" class="tab-content">
+                <div class="row" id="my-sections-container">
+                    <!-- My sections will be populated here -->
+                </div>
+                <div id="my-sections-empty" class="my-sections-empty">
+                    <i class="fa-solid fa-cube mb-3" style="font-size: 48px; color: #cbd5e1;"></i>
+                    <h3>You haven't added any sections yet</h3>
+                    <p class="text-muted">Browse the explore tab to find and add sections to your collection.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="notification" class="notification">
+        <span id="notification-message"></span>
+    </div>
+
+    <script>
+        // Store Connected State
+        let connectedStore = '';
+        let availableThemes = [];
+        let mySections = [];
+        
+        // DOM Elements
+        const exploreSectionsContainer = document.getElementById('explore-sections');
+        const mySectionsContainer = document.getElementById('my-sections-container');
+        const mySectionsEmpty = document.getElementById('my-sections-empty');
+        const loadingElement = document.getElementById('loading');
+        const themeDropdown = document.getElementById('theme-dropdown');
+        const searchInput = document.getElementById('search-input');
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+        const notification = document.getElementById('notification');
+        const notificationMessage = document.getElementById('notification-message');
+        const categoryItems = document.querySelectorAll('.category-item');
+        
+        // Sections Data (hardcoded for now, this would normally come from an API)
+        const sections = [
+            {
+                id: 'testimonial-8',
+                title: 'Testimonial #8',
+                description: 'A modern testimonial section with customer ratings.',
+                previewUrl: '/section-preview/testimonial-8',
+                price: 'Free',
+                categories: ['testimonial', 'free']
+            },
+            {
+                id: 'product-tabs',
+                title: 'Product Tabs',
+                description: 'Tabbed interface for product details and information.',
+                previewUrl: '/section-preview/product-tabs',
+                price: 'Free',
+                categories: ['features', 'free']
+            },
+            {
+                id: 'video-banner',
+                title: 'Video Banner',
+                description: 'Full-width video background banner with text overlay.',
+                previewUrl: '/section-preview/video-banner',
+                price: 'Free',
+                categories: ['hero', 'video', 'free']
+            },
+            {
+                id: 'slider-2',
+                title: 'Slider #2',
+                description: 'Image slider with multiple layout options.',
+                previewUrl: '/section-preview/slider-2',
+                price: 'Free',
+                categories: ['hero', 'free']
+            },
+            {
+                id: 'testimonial-35',
+                title: 'Testimonial #35',
+                description: 'Customer testimonials with avatar and rating.',
+                previewUrl: '/section-preview/testimonial-35',
+                price: 'Free',
+                categories: ['testimonial', 'newest', 'free']
+            },
+            {
+                id: 'video-grid-5',
+                title: 'Video Grid #5',
+                description: 'Grid layout for multiple video content.',
+                previewUrl: '/section-preview/video-grid-5',
+                price: 'Free',
+                categories: ['video', 'newest', 'free']
+            },
+            {
+                id: 'feature-36',
+                title: 'Feature #36',
+                description: 'Highlight product or service features with icons.',
+                previewUrl: '/section-preview/feature-36',
+                price: 'Free',
+                categories: ['features', 'newest', 'free']
+            },
+            {
+                id: 'shop-look-5',
+                title: 'Shop The Look #5',
+                description: 'Showcase products in context with direct purchase options.',
+                previewUrl: '/section-preview/shop-look-5',
+                price: 'Free',
+                categories: ['features', 'newest', 'free']
+            },
+            {
+                id: 'faq-1',
+                title: 'FAQ #1',
+                description: 'Expandable FAQ section with accordion functionality.',
+                previewUrl: '/section-preview/faq-1',
+                price: 'Free',
+                categories: ['faq', 'free']
+            },
+            {
+                id: 'todo-list',
+                title: 'Todo List',
+                description: 'A simple todo list component with add, edit, and delete functionality.',
+                previewUrl: '/section-preview/todo-list',
+                price: 'Free',
+                categories: ['features', 'free']
+            }
+        ];
+        
+        // Event Listeners
+        searchInput.addEventListener('input', filterSections);
+        themeDropdown.addEventListener('change', updateSelectedTheme);
+        
+        // Initialize tabs
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const tabId = button.getAttribute('data-tab');
+                setActiveTab(tabId);
+            });
+        });
+        
+        // Initialize categories
+        categoryItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const category = item.getAttribute('data-category');
+                filterByCategory(category);
+            });
+        });
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', initialize);
+        
+        function initialize() {
+            // Load user's shop and theme info
+            loadShopInfo();
+            // Load sections
+            renderExploreSections(sections);
+            // Load saved sections from localStorage
+            loadMySections();
+            
+            // Check query params for tab
+            const urlParams = new URLSearchParams(window.location.search);
+            const tab = urlParams.get('tab');
+            if (tab === 'my-sections') {
+                setActiveTab('my-sections');
+            }
+        }
+        
+        function loadShopInfo() {
+            // In a real app, you would get this from Shopify
+            // For now, we'll use a mock value
+            const shopDomain = 'okayscaledemo.myshopify.com';
+            connectedStore = shopDomain;
+            
+            // Load themes
+            loadThemes(shopDomain);
+        }
+        
+        function loadThemes(shop) {
+            fetch(`/api/themes?shop=${shop}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.themes) {
+                        availableThemes = data.themes;
+                        populateThemeDropdown(data.themes);
+                    } else {
+                        showNotification('Failed to load themes', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading themes:', error);
+                });
+        }
+        
+        function populateThemeDropdown(themes) {
+            themeDropdown.innerHTML = '<option value="">Select Theme...</option>';
+            
+            themes.forEach(theme => {
+                const option = document.createElement('option');
+                option.value = theme.id;
+                option.textContent = `${theme.name} ${theme.role === 'main' ? '(Live)' : ''}`;
+                if (theme.role === 'main') {
+                    option.selected = true;
+                }
+                themeDropdown.appendChild(option);
+            });
+        }
+        
+        function updateSelectedTheme() {
+            // For future implementation if needed
+            console.log('Selected theme:', themeDropdown.value);
+        }
+        
+        function renderExploreSections(sectionsData) {
+            loadingElement.style.display = 'none';
+            exploreSectionsContainer.innerHTML = '';
+            
+            sectionsData.forEach(section => {
+                const sectionCard = document.createElement('div');
+                sectionCard.className = 'col-md-4 mb-4';
+                sectionCard.innerHTML = `
+                    <div class="section-card position-relative">
+                        <span class="section-indicator">${section.price}</span>
+                        <div class="section-preview" style="background-image: url('${section.previewUrl}')"></div>
+                        <div class="section-info">
+                            <h3 class="section-title">${section.title}</h3>
+                            <p>${section.description}</p>
+                            <div>
+                                ${section.categories.map(cat => 
+                                    `<span class="section-tag">${cat}</span>`
+                                ).join('')}
+                            </div>
+                            <button class="btn-add-section" data-section-id="${section.id}">Add to My Sections</button>
+                        </div>
+                    </div>
+                `;
+                exploreSectionsContainer.appendChild(sectionCard);
+                
+                // Add event listener to the button
+                const addButton = sectionCard.querySelector('.btn-add-section');
+                addButton.addEventListener('click', () => addToMySections(section));
+            });
+        }
+        
+        function renderMySections() {
+            mySectionsContainer.innerHTML = '';
+            
+            if (mySections.length === 0) {
+                mySectionsEmpty.style.display = 'block';
+                return;
+            }
+            
+            mySectionsEmpty.style.display = 'none';
+            
+            mySections.forEach(section => {
+                const sectionCard = document.createElement('div');
+                sectionCard.className = 'col-md-4 mb-4';
+                sectionCard.innerHTML = `
+                    <div class="section-card position-relative">
+                        <span class="section-indicator">${section.price}</span>
+                        <div class="section-preview" style="background-image: url('${section.previewUrl}')"></div>
+                        <div class="section-info">
+                            <h3 class="section-title">${section.title}</h3>
+                            <p>${section.description}</p>
+                            <div class="mt-3">
+                                <button class="btn-add-to-theme" data-section-id="${section.id}">Add to Theme</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                mySectionsContainer.appendChild(sectionCard);
+                
+                // Add event listener to the button
+                const addToThemeButton = sectionCard.querySelector('.btn-add-to-theme');
+                addToThemeButton.addEventListener('click', () => addSectionToTheme(section.id));
+            });
+        }
+        
+        function addToMySections(section) {
+            // Check if already in My Sections
+            if (mySections.some(s => s.id === section.id)) {
+                showNotification(`${section.title} is already in your sections`, 'error');
+                return;
+            }
+            
+            // Add to My Sections
+            mySections.push(section);
+            saveMySections();
+            showNotification(`Added ${section.title} to My Sections`, 'success');
+            
+            // Switch to My Sections tab
+            setActiveTab('my-sections');
+        }
+        
+        function saveMySections() {
+            localStorage.setItem('mySections', JSON.stringify(mySections));
+            renderMySections();
+        }
+        
+        function loadMySections() {
+            const saved = localStorage.getItem('mySections');
+            if (saved) {
+                mySections = JSON.parse(saved);
+            }
+            renderMySections();
+        }
+        
+        function addSectionToTheme(sectionId) {
+            const selectedThemeId = themeDropdown.value;
+            
+            if (!selectedThemeId) {
+                showNotification('Please select a theme first', 'error');
+                return;
+            }
+            
+            // Show loading state
+            const button = document.querySelector(`button.btn-add-to-theme[data-section-id="${sectionId}"]`);
+            const originalText = button.textContent;
+            button.textContent = 'Adding...';
+            button.disabled = true;
+            
+            // Send request to add section
+            fetch('/api/sections/install', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    sectionId: sectionId,
+                    shop: connectedStore,
+                    themeId: selectedThemeId
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                button.textContent = originalText;
+                button.disabled = false;
+                
+                if (data.success) {
+                    showNotification(`Added "${sectionId}" to theme: ${data.themeName}`, 'success');
+                } else {
+                    showNotification(data.message || 'Failed to add section', 'error');
+                }
+            })
+            .catch(error => {
+                button.textContent = originalText;
+                button.disabled = false;
+                showNotification('Error adding section to theme', 'error');
+                console.error('Error:', error);
+            });
+        }
+        
+        function filterSections() {
+            const searchTerm = searchInput.value.toLowerCase();
+            
+            if (!searchTerm) {
+                renderExploreSections(sections);
+                return;
+            }
+            
+            const filtered = sections.filter(section => 
+                section.title.toLowerCase().includes(searchTerm) || 
+                section.description.toLowerCase().includes(searchTerm) ||
+                section.categories.some(cat => cat.toLowerCase().includes(searchTerm))
+            );
+            
+            renderExploreSections(filtered);
+        }
+        
+        function filterByCategory(category) {
+            if (category === 'all') {
+                renderExploreSections(sections);
+                return;
+            }
+            
+            const filtered = sections.filter(section => 
+                section.categories.includes(category)
+            );
+            
+            renderExploreSections(filtered);
+        }
+        
+        function setActiveTab(tabId) {
+            // Update tab buttons
+            tabButtons.forEach(button => {
+                if (button.getAttribute('data-tab') === tabId) {
+                    button.classList.add('active');
+                } else {
+                    button.classList.remove('active');
+                }
+            });
+            
+            // Update tab content
+            tabContents.forEach(content => {
+                if (content.id === `${tabId}-tab`) {
+                    content.classList.add('active');
+                } else {
+                    content.classList.remove('active');
+                }
+            });
+            
+            // If switching to My Sections tab, refresh the list
+            if (tabId === 'my-sections') {
+                renderMySections();
+            }
+        }
+        
+        function showNotification(message, type) {
+            notificationMessage.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+</body>
+</html> 

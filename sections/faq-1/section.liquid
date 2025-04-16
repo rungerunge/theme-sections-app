@@ -1,0 +1,250 @@
+{% comment %}
+  FAQ Section - Section Store
+  A customizable FAQ section with expandable questions and answers
+{% endcomment %}
+
+<div class="faq-section">
+  <div class="page-width">
+    {% if section.settings.title != blank %}
+      <div class="section-header text-center">
+        <h2>{{ section.settings.title }}</h2>
+        {% if section.settings.description != blank %}
+          <div class="rte">{{ section.settings.description }}</div>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    <div class="faq-list">
+      {% for block in section.blocks %}
+        {% case block.type %}
+          {% when 'question' %}
+            <div class="faq-item" {{ block.shopify_attributes }}>
+              <div class="faq-question">
+                <h3>{{ block.settings.question }}</h3>
+                <button class="faq-toggle" aria-expanded="false">
+                  <span class="visually-hidden">Toggle answer</span>
+                  <span class="icon-plus">+</span>
+                  <span class="icon-minus">−</span>
+                </button>
+              </div>
+              <div class="faq-answer">
+                <div class="rte">{{ block.settings.answer }}</div>
+              </div>
+            </div>
+        {% endcase %}
+      {% endfor %}
+
+      {% if section.blocks.size == 0 %}
+        <div class="faq-placeholder">
+          <h3>FAQ Section</h3>
+          <p>Add questions and answers using the theme editor.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<style>
+  .faq-section {
+    padding: 40px 0;
+  }
+  
+  .page-width {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+  
+  .section-header {
+    margin-bottom: 40px;
+  }
+  
+  .section-header h2 {
+    font-size: 28px;
+    font-weight: 600;
+    margin-bottom: 15px;
+  }
+  
+  .faq-list {
+    margin: 0 auto;
+    max-width: 800px;
+  }
+  
+  .faq-item {
+    border-bottom: 1px solid #e2e8f0;
+  }
+  
+  .faq-question {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 0;
+    cursor: pointer;
+  }
+  
+  .faq-question h3 {
+    font-size: 18px;
+    font-weight: 500;
+    margin: 0;
+  }
+  
+  .faq-toggle {
+    background: none;
+    border: none;
+    width: 24px;
+    height: 24px;
+    position: relative;
+    cursor: pointer;
+    padding: 0;
+  }
+  
+  .icon-plus, .icon-minus {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    transition: opacity 0.3s, transform 0.3s;
+  }
+  
+  .icon-minus {
+    opacity: 0;
+    transform: rotate(-90deg);
+  }
+  
+  .faq-item.active .icon-plus {
+    opacity: 0;
+    transform: rotate(90deg);
+  }
+  
+  .faq-item.active .icon-minus {
+    opacity: 1;
+    transform: rotate(0);
+  }
+  
+  .faq-answer {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.5s ease-out;
+    padding: 0 10px;
+  }
+  
+  .faq-item.active .faq-answer {
+    max-height: 1000px;
+    padding-bottom: 20px;
+  }
+  
+  .faq-placeholder {
+    text-align: center;
+    padding: 40px 0;
+    border: 2px dashed #e2e8f0;
+    border-radius: 8px;
+  }
+  
+  .visually-hidden {
+    position: absolute !important;
+    clip: rect(1px, 1px, 1px, 1px);
+    padding: 0 !important;
+    border: 0 !important;
+    height: 1px !important;
+    width: 1px !important;
+    overflow: hidden;
+  }
+</style>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const faqItems = document.querySelectorAll('.faq-item');
+    
+    faqItems.forEach(item => {
+      const question = item.querySelector('.faq-question');
+      const answer = item.querySelector('.faq-answer');
+      
+      question.addEventListener('click', () => {
+        const isActive = item.classList.contains('active');
+        
+        // Close all items
+        faqItems.forEach(faqItem => {
+          faqItem.classList.remove('active');
+        });
+        
+        // If the clicked item wasn't active, open it
+        if (!isActive) {
+          item.classList.add('active');
+        }
+      });
+    });
+  });
+</script>
+
+{% schema %}
+{
+  "name": "FAQ",
+  "settings": [
+    {
+      "type": "text",
+      "id": "title",
+      "label": "Title",
+      "default": "Frequently Asked Questions"
+    },
+    {
+      "type": "richtext",
+      "id": "description",
+      "label": "Description",
+      "default": "<p>Find answers to common questions about our products and services.</p>"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "question",
+      "name": "Question",
+      "settings": [
+        {
+          "type": "text",
+          "id": "question",
+          "label": "Question",
+          "default": "What is your shipping policy?"
+        },
+        {
+          "type": "richtext",
+          "id": "answer",
+          "label": "Answer",
+          "default": "<p>We ship worldwide using trusted carriers. Standard shipping typically takes 3-7 business days within the US, and 7-14 business days for international orders.</p>"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "FAQ",
+      "blocks": [
+        {
+          "type": "question",
+          "settings": {
+            "question": "What is your shipping policy?",
+            "answer": "<p>We ship worldwide using trusted carriers. Standard shipping typically takes 3-7 business days within the US, and 7-14 business days for international orders.</p>"
+          }
+        },
+        {
+          "type": "question",
+          "settings": {
+            "question": "How do I return an item?",
+            "answer": "<p>Our return process is simple. Contact our customer service team within 30 days of receiving your order, and we'll guide you through the return process.</p>"
+          }
+        },
+        {
+          "type": "question",
+          "settings": {
+            "question": "Do you offer international shipping?",
+            "answer": "<p>Yes, we ship to most countries worldwide. International shipping rates and delivery times vary by location.</p>"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %} 

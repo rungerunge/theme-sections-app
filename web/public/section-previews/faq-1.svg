@@ -1,0 +1,26 @@
+<svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
+  <rect width="800" height="600" fill="#f8f8f8"/>
+  <rect x="50" y="50" width="700" height="500" rx="10" fill="#ffffff" stroke="#e0e0e0" stroke-width="2"/>
+  
+  <!-- Title -->
+  <text x="400" y="110" font-family="Arial, sans-serif" font-size="32" font-weight="bold" text-anchor="middle" fill="#333333">Frequently Asked Questions</text>
+  
+  <!-- FAQ Items -->
+  <rect x="150" y="160" width="500" height="60" rx="5" fill="#f9f9f9" stroke="#e0e0e0" stroke-width="1"/>
+  <text x="170" y="198" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#333333">What is your shipping policy?</text>
+  <text x="620" y="198" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#999999">+</text>
+  
+  <rect x="150" y="240" width="500" height="60" rx="5" fill="#f9f9f9" stroke="#e0e0e0" stroke-width="1"/>
+  <text x="170" y="278" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#333333">How do I return an item?</text>
+  <text x="620" y="278" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#999999">+</text>
+  
+  <rect x="150" y="320" width="500" height="60" rx="5" fill="#f9f9f9" stroke="#e0e0e0" stroke-width="1"/>
+  <text x="170" y="358" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#333333">Do you offer international shipping?</text>
+  <text x="620" y="358" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#999999">+</text>
+  
+  <rect x="150" y="400" width="500" height="100" rx="5" fill="#f3f4f6" stroke="#e0e0e0" stroke-width="1"/>
+  <text x="170" y="438" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#333333">Do you offer gift wrapping?</text>
+  <text x="620" y="438" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#999999">−</text>
+  <text x="170" y="470" font-family="Arial, sans-serif" font-size="16" fill="#555555">Yes, we offer complimentary gift wrapping on all orders.</text>
+  <text x="170" y="490" font-family="Arial, sans-serif" font-size="16" fill="#555555">Just select this option during checkout.</text>
+</svg> 

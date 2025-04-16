@@ -1,0 +1,26 @@
+<svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3498db;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2c3e50;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background with overlay -->
+  <rect width="800" height="600" fill="url(#bg-gradient)"/>
+  <rect width="800" height="600" fill="#000000" fill-opacity="0.4"/>
+  
+  <!-- Video play button -->
+  <circle cx="400" cy="300" r="70" fill="#ffffff" fill-opacity="0.2"/>
+  <polygon points="380,260 380,340 440,300" fill="#ffffff"/>
+  
+  <!-- Content -->
+  <text x="400" y="150" font-family="Arial, sans-serif" font-size="48" font-weight="bold" text-anchor="middle" fill="#ffffff">New Linen Collection</text>
+  
+  <text x="400" y="430" font-family="Arial, sans-serif" font-size="20" text-anchor="middle" fill="#ffffff">Discover our handcrafted linen products</text>
+  <text x="400" y="460" font-family="Arial, sans-serif" font-size="20" text-anchor="middle" fill="#ffffff">designed for modern living.</text>
+  
+  <!-- Button -->
+  <rect x="325" y="490" width="150" height="50" rx="5" fill="#ffffff"/>
+  <text x="400" y="523" font-family="Arial, sans-serif" font-size="18" font-weight="bold" text-anchor="middle" fill="#333333">Shop Now</text>
+</svg> 
