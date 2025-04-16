@@ -6,6 +6,13 @@ const axios = require('axios');
 // Create Express app
 const app = express();
 
+// Define logging
+function logMessage(message, isError = false) {
+  const timestamp = new Date().toISOString();
+  const logPrefix = isError ? '[ERROR]' : '[INFO]';
+  console.log(`${timestamp} ${logPrefix} ${message}`);
+}
+
 // Add CORS headers
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
@@ -25,10 +32,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Shopify API credentials
-const SHOPIFY_API_KEY = process.env.SHOPIFY_API_KEY || 'your_api_key';
-const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET || 'your_api_secret';
+const SHOPIFY_API_KEY = process.env.SHOPIFY_API_KEY || 'cf5df4d826a3faea551a29eec40ad090';
+const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET || 'a750fba3926ae2137fdac14dff34631c';
 const HOST = process.env.HOST || 'https://theme-sections-app-chjk.onrender.com';
-const SCOPES = process.env.SCOPES || 'read_themes,write_themes,read_content,write_content,read_products,write_products';
+const SCOPES = process.env.SCOPES || 'read_themes,write_themes,read_files,write_files,read_content,write_content,read_products,write_products,read_script_tags,write_script_tags';
 
 // Private app credentials - store tokens securely
 const PRIVATE_APP_TOKENS = {
@@ -38,14 +45,31 @@ const PRIVATE_APP_TOKENS = {
 };
 
 // Log server start
-console.log('Starting simple Express server...');
-console.log('Current working directory:', process.cwd());
-console.log('Directory contents:', fs.readdirSync(process.cwd()));
+logMessage('Starting Express server...');
+logMessage('Current working directory: ' + process.cwd());
 
-// Add direct route to the app
-app.get('/app', (req, res) => {
-  res.sendFile(path.join(__dirname, 'web', 'public', 'app.html'));
-});
+try {
+  logMessage('Directory contents: ' + fs.readdirSync(process.cwd()).join(', '));
+} catch (error) {
+  logMessage('Error reading directory: ' + error.message, true);
+}
+
+// Check if directories exist and create them if needed
+function ensureDir(dir) {
+  if (!fs.existsSync(dir)) {
+    logMessage(`Creating directory: ${dir}`);
+    fs.mkdirSync(dir, { recursive: true });
+  }
+}
+
+// Ensure essential directories exist
+const webPublicDir = path.join(__dirname, 'web', 'public');
+const sectionPreviewsDir = path.join(webPublicDir, 'section-previews');
+const sectionsDir = path.join(__dirname, 'sections');
+
+ensureDir(webPublicDir);
+ensureDir(sectionPreviewsDir);
+ensureDir(sectionsDir);
 
 // Serve static files
 app.use('/section-previews', express.static(path.join(__dirname, 'web', 'public', 'section-previews')));
@@ -53,20 +77,42 @@ app.use('/public', express.static(path.join(__dirname, 'web', 'public')));
 app.use('/assets', express.static(path.join(__dirname, 'web', 'public')));
 app.use('/web/public', express.static(path.join(__dirname, 'web', 'public')));
 
-// Root endpoint
-app.get('/', (req, res) => {
-  // Redirect directly to the app.html page
-  return res.redirect('/web/public/app.html');
-});
-
 // Add a health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
-    version: '1.0.2',
+    version: '1.0.3',
     server: 'simple-express'
   });
+});
+
+// Root endpoint
+app.get('/', (req, res) => {
+  logMessage('Received request to root endpoint');
+  const appHtmlPath = path.join(__dirname, 'web', 'public', 'app.html');
+  
+  if (fs.existsSync(appHtmlPath)) {
+    logMessage('Serving app.html');
+    return res.sendFile(appHtmlPath);
+  } else {
+    logMessage('app.html not found at ' + appHtmlPath, true);
+    return res.status(404).send('App HTML file not found. Please check server configuration.');
+  }
+});
+
+// Direct route to the app
+app.get('/app', (req, res) => {
+  logMessage('Received request to /app endpoint');
+  const appHtmlPath = path.join(__dirname, 'web', 'public', 'app.html');
+  
+  if (fs.existsSync(appHtmlPath)) {
+    logMessage('Serving app.html');
+    return res.sendFile(appHtmlPath);
+  } else {
+    logMessage('app.html not found at ' + appHtmlPath, true);
+    return res.status(404).send('App HTML file not found. Please check server configuration.');
+  }
 });
 
 // API endpoint for connecting to a store
@@ -108,6 +154,8 @@ app.get('/api/themes', async (req, res) => {
   }
   
   try {
+    logMessage(`Fetching themes for shop: ${shop}`);
+    
     // Get themes from Shopify
     const themesResponse = await axios.get(`https://${shop}/admin/api/2024-01/themes.json`, {
       headers: {
@@ -116,12 +164,18 @@ app.get('/api/themes', async (req, res) => {
       }
     });
     
+    logMessage(`Successfully fetched ${themesResponse.data.themes.length} themes`);
+    
     return res.status(200).json({
       success: true,
       themes: themesResponse.data.themes
     });
   } catch (error) {
-    console.error('Error fetching themes:', error.message);
+    logMessage(`Error fetching themes: ${error.message}`, true);
+    if (error.response) {
+      logMessage(`API response: ${JSON.stringify(error.response.data)}`, true);
+    }
+    
     return res.status(500).json({
       error: 'Error fetching themes',
       message: error.message
@@ -132,7 +186,7 @@ app.get('/api/themes', async (req, res) => {
 // API endpoint for section installation
 app.post('/api/sections/install', async (req, res) => {
   try {
-    console.log('Received request to /api/sections/install with body:', req.body);
+    logMessage('Received request to /api/sections/install with body: ' + JSON.stringify(req.body));
     const { sectionId, shop, themeId } = req.body;
     
     if (!sectionId) {
@@ -152,7 +206,7 @@ app.post('/api/sections/install', async (req, res) => {
       });
     }
     
-    console.log(`Processing installation for shop: ${shop}, section: ${sectionId}, themeId: ${themeId}`);
+    logMessage(`Processing installation for shop: ${shop}, section: ${sectionId}, themeId: ${themeId}`);
     
     // Try to read the section file if it exists
     let sectionContent = null;
@@ -160,23 +214,23 @@ app.post('/api/sections/install', async (req, res) => {
     
     if (fs.existsSync(sectionPath)) {
       sectionContent = fs.readFileSync(sectionPath, 'utf8');
-      console.log(`Section file found for ${sectionId}`);
+      logMessage(`Section file found for ${sectionId}`);
     } else {
-      console.log(`Section file not found at ${sectionPath}`);
+      logMessage(`Section file not found at ${sectionPath}`, true);
       
       // List available sections
       const sectionsDir = path.join(process.cwd(), 'sections');
       if (fs.existsSync(sectionsDir)) {
-        console.log('Available sections:', fs.readdirSync(sectionsDir));
+        const availableSections = fs.readdirSync(sectionsDir);
+        logMessage('Available sections: ' + availableSections.join(', '));
         
-        // Try to find the section file with a different directory structure
-        const sections = fs.readdirSync(sectionsDir);
+        // Try to find the section file with a different structure
         let alternativePath = null;
         
-        for (const section of sections) {
+        for (const section of availableSections) {
           const potentialPath = path.join(sectionsDir, section, 'section.liquid');
           if (fs.existsSync(potentialPath)) {
-            console.log(`Found alternative section file at ${potentialPath}`);
+            logMessage(`Found alternative section file at ${potentialPath}`);
             alternativePath = potentialPath;
             break;
           }
@@ -188,7 +242,7 @@ app.post('/api/sections/install', async (req, res) => {
           return res.status(404).json({ 
             error: 'Section not found',
             message: 'The specified section could not be found. Please check the section ID and try again.',
-            availableSections: sections 
+            availableSections
           });
         }
       } else {
@@ -205,7 +259,7 @@ app.post('/api/sections/install', async (req, res) => {
       let themeName = null;
       
       if (!selectedThemeId) {
-        console.log('No theme ID provided, fetching active theme');
+        logMessage('No theme ID provided, fetching active theme');
         // Get active theme
         const themesResponse = await axios.get(`https://${shop}/admin/api/2024-01/themes.json`, {
           headers: {
@@ -223,10 +277,10 @@ app.post('/api/sections/install', async (req, res) => {
         
         selectedThemeId = activeTheme.id;
         themeName = activeTheme.name;
-        console.log('Active theme found:', selectedThemeId, themeName);
+        logMessage('Active theme found: ' + selectedThemeId + ', ' + themeName);
       } else {
         // Use provided theme ID
-        console.log('Using provided theme ID:', selectedThemeId);
+        logMessage('Using provided theme ID: ' + selectedThemeId);
         
         // Get theme name if possible
         try {
@@ -241,11 +295,12 @@ app.post('/api/sections/install', async (req, res) => {
         } catch (error) {
           // If we can't get the theme name, use a default
           themeName = "Selected Theme";
-          console.log('Could not fetch theme name:', error.message);
+          logMessage('Could not fetch theme name: ' + error.message, true);
         }
       }
       
       // Add the section to the theme
+      logMessage('Adding section to theme...');
       const assetResponse = await axios.put(
         `https://${shop}/admin/api/2024-01/themes/${selectedThemeId}/assets.json`,
         {
@@ -262,7 +317,7 @@ app.post('/api/sections/install', async (req, res) => {
         }
       );
       
-      console.log('Section successfully installed');
+      logMessage('Section successfully installed');
       
       return res.status(200).json({
         success: true,
@@ -274,9 +329,9 @@ app.post('/api/sections/install', async (req, res) => {
         timestamp: new Date().toISOString()
       });
     } catch (apiError) {
-      console.error('Shopify API Error:', apiError.message);
+      logMessage('Shopify API Error: ' + apiError.message, true);
       if (apiError.response) {
-        console.error('API Response:', apiError.response.data);
+        logMessage('API Response: ' + JSON.stringify(apiError.response.data), true);
       }
       
       return res.status(500).json({
@@ -286,7 +341,9 @@ app.post('/api/sections/install', async (req, res) => {
       });
     }
   } catch (error) {
-    console.error('Error in section install endpoint:', error);
+    logMessage('Error in section install endpoint: ' + error.message, true);
+    logMessage(error.stack || 'No stack trace available', true);
+    
     return res.status(500).json({ 
       error: 'Server error', 
       message: error.message 
@@ -330,31 +387,36 @@ app.get('/auth/callback', async (req, res) => {
     // For demo purposes, we're storing the token for the shop
     // In a real app, you'd save this to a database
     PRIVATE_APP_TOKENS[shop] = accessToken;
-    console.log(`Stored access token for ${shop}`);
+    logMessage(`Stored access token for ${shop}`);
     
     // Redirect to the app
     res.redirect(`/web/public/app.html?shop=${shop}`);
   } catch (error) {
-    console.error('Error completing OAuth:', error);
+    logMessage('Error completing OAuth: ' + error.message, true);
     res.status(500).send('Error completing OAuth flow');
   }
-});
-
-// Serve todo preview page
-app.get('/preview/todo-list', (req, res) => {
-  res.sendFile(path.join(__dirname, 'web', 'public', 'todo-preview.html'));
 });
 
 // Serve section preview images
 app.get('/section-preview/:sectionId', (req, res) => {
   const sectionId = req.params.sectionId;
-  const previewPath = path.join(__dirname, 'sections', sectionId, 'preview.png');
+  logMessage(`Serving preview for section: ${sectionId}`);
   
-  // Check if file exists
-  if (fs.existsSync(previewPath)) {
-    res.sendFile(previewPath);
+  // First check if an SVG exists in the web/public/section-previews directory
+  const svgPreviewPath = path.join(__dirname, 'web', 'public', 'section-previews', `${sectionId}.svg`);
+  const pngPreviewPath = path.join(__dirname, 'sections', sectionId, 'preview.png');
+  
+  if (fs.existsSync(svgPreviewPath)) {
+    logMessage(`Found SVG preview at ${svgPreviewPath}`);
+    res.setHeader('Content-Type', 'image/svg+xml');
+    return res.sendFile(svgPreviewPath);
+  } else if (fs.existsSync(pngPreviewPath)) {
+    logMessage(`Found PNG preview at ${pngPreviewPath}`);
+    return res.sendFile(pngPreviewPath);
   } else {
     // Generate simple SVG as placeholder
+    logMessage(`No preview found for ${sectionId}, generating placeholder`);
+    
     const sectionTitle = sectionId.split('-').map(word => 
       word.charAt(0).toUpperCase() + word.slice(1)
     ).join(' ');
@@ -373,7 +435,42 @@ app.get('/section-preview/:sectionId', (req, res) => {
   }
 });
 
+// Error handling middleware
+app.use((err, req, res, next) => {
+  logMessage(`Unhandled error: ${err.message}`, true);
+  logMessage(err.stack, true);
+  
+  res.status(500).json({
+    error: 'Server error',
+    message: 'An unexpected error occurred'
+  });
+});
+
+// Start the server
 const port = process.env.PORT || 3001;
-app.listen(port, '0.0.0.0', () => {
-  console.log(`Simple Express server running on port ${port}`);
+const server = app.listen(port, '0.0.0.0', () => {
+  logMessage(`Express server running on port ${port}`);
+});
+
+// Handle graceful shutdown
+process.on('SIGTERM', () => {
+  logMessage('SIGTERM signal received: closing HTTP server');
+  server.close(() => {
+    logMessage('HTTP server closed');
+    process.exit(0);
+  });
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  logMessage(`Unhandled Rejection at: ${promise}, reason: ${reason}`, true);
+});
+
+process.on('uncaughtException', (error) => {
+  logMessage(`Uncaught Exception: ${error.message}`, true);
+  logMessage(error.stack, true);
+  
+  // Only exit for truly fatal errors
+  if (error.fatal) {
+    process.exit(1);
+  }
 }); 

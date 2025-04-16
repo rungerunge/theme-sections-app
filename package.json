@@ -13,7 +13,8 @@
     "shopify": "cd web && npm run shopify",
     "version-check": "node version-check.js",
     "lint": "eslint --cache --cache-location ./node_modules/.cache/eslint .",
-    "codegen": "shopify app codegen"
+    "codegen": "shopify app codegen",
+    "debug": "node --inspect-brk build.js"
   },
   "keywords": [
     "shopify",
@@ -22,39 +23,37 @@
   ],
   "author": "OkayScale",
   "dependencies": {
-    "@remix-run/node": "^1.19.3",
-    "@remix-run/react": "^1.18.1",
-    "@remix-run/serve": "^1.18.1",
-    "@shopify/app": "3.48.1",
-    "@shopify/app-bridge": "^3.7.8",
-    "@shopify/app-bridge-react": "^3.7.8",
-    "@shopify/cli": "3.48.1",
-    "@shopify/polaris": "^11.1.2",
-    "@shopify/shopify-api": "^11.12.0",
-    "@shopify/shopify-app-remix": "^1.3.0",
-    "@shopify/shopify-app-session-storage": "^1.1.0",
-    "@types/html2canvas": "^0.5.35",
-    "axios": "^1.8.4",
-    "cross-env": "^7.0.3",
-    "dotenv": "^16.3.1",
-    "html2canvas": "^1.4.1",
-    "isbot": "^3.6.8",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "@remix-run/node": "1.19.3",
+    "@remix-run/react": "1.18.1",
+    "@remix-run/serve": "1.18.1",
+    "@shopify/app": "3.47.0",
+    "@shopify/app-bridge": "3.7.8",
+    "@shopify/app-bridge-react": "3.7.8",
+    "@shopify/cli": "3.47.0",
+    "@shopify/polaris": "11.1.2",
+    "@shopify/shopify-api": "7.7.0",
+    "@shopify/shopify-app-remix": "1.3.0",
+    "@shopify/shopify-app-session-storage": "1.1.0",
+    "express": "4.18.2",
+    "axios": "1.6.2",
+    "cross-env": "7.0.3",
+    "dotenv": "16.3.1",
+    "isbot": "3.6.8",
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
   },
   "devDependencies": {
-    "@remix-run/dev": "^1.18.1",
-    "@remix-run/eslint-config": "^1.18.1",
-    "@types/eslint": "^8.4.10",
-    "eslint": "^8.46.0",
-    "eslint-config-prettier": "^8.8.0",
-    "prettier": "^2.8.8"
+    "@remix-run/dev": "1.18.1",
+    "@remix-run/eslint-config": "1.18.1",
+    "eslint": "8.46.0",
+    "eslint-config-prettier": "8.8.0",
+    "prettier": "2.8.8"
   },
   "workspaces": [
     "web",
     "extensions/*"
   ],
   "engines": {
-    "node": ">=14.0.0"
+    "node": ">=16.0.0"
   }
 }

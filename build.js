@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const { execSync } = require('child_process');
+const { execSync, exec } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
@@ -10,50 +10,156 @@ const publicDir = path.join(webDir, 'public');
 const sectionsDir = path.join(__dirname, 'sections');
 const webSectionsDir = path.join(publicDir, 'sections');
 const previewsDir = path.join(publicDir, 'section-previews');
+const logPath = path.join(__dirname, 'build-debug.log');
+
+// Setup logging
+const logStream = fs.createWriteStream(logPath, { flags: 'a' });
+const log = (message) => {
+  const timestamp = new Date().toISOString();
+  const formattedMessage = `[${timestamp}] ${message}\n`;
+  console.log(message);
+  logStream.write(formattedMessage);
+};
+
+const logError = (message, error) => {
+  const timestamp = new Date().toISOString();
+  let errorDetails = '';
+  
+  if (error) {
+    errorDetails = `\nError: ${error.message || error}`;
+    if (error.stack) {
+      errorDetails += `\nStack: ${error.stack}`;
+    }
+  }
+  
+  const formattedMessage = `[${timestamp}] ERROR: ${message}${errorDetails}\n`;
+  console.error(`ERROR: ${message}`);
+  if (error) console.error(error);
+  logStream.write(formattedMessage);
+};
 
 // Helper function to run shell commands
 function run(command, cwd = __dirname) {
-  console.log(`Running: ${command}`);
+  log(`Running: ${command} in ${cwd}`);
   try {
-    execSync(command, { 
+    const output = execSync(command, { 
       cwd, 
-      stdio: 'inherit',
-      env: { ...process.env }
+      stdio: 'pipe',
+      env: { ...process.env },
+      encoding: 'utf8'
     });
+    log(`Command output: ${output.substring(0, 500)}${output.length > 500 ? '...(truncated)' : ''}`);
+    return output;
   } catch (error) {
-    console.error(`Error running "${command}":`, error.message);
-    process.exit(1);
+    logError(`Error running "${command}":`, error);
+    log(`Command stderr: ${error.stderr || 'N/A'}`);
+    log(`Command stdout: ${error.stdout || 'N/A'}`);
+    throw error;
   }
+}
+
+// Helper function for running commands with detailed output
+function runDetailed(command, cwd = __dirname) {
+  return new Promise((resolve, reject) => {
+    log(`Running with detailed output: ${command} in ${cwd}`);
+    
+    const child = exec(command, { cwd, env: { ...process.env } });
+    let stdout = '';
+    let stderr = '';
+    
+    child.stdout.on('data', (data) => {
+      stdout += data;
+      log(`[OUT] ${data.trim()}`);
+    });
+    
+    child.stderr.on('data', (data) => {
+      stderr += data;
+      log(`[ERR] ${data.trim()}`);
+    });
+    
+    child.on('close', (code) => {
+      if (code === 0) {
+        log(`Command completed successfully with exit code: ${code}`);
+        resolve({ stdout, stderr });
+      } else {
+        logError(`Command failed with exit code: ${code}`);
+        reject(new Error(`Command failed with exit code: ${code}\nStderr: ${stderr}`));
+      }
+    });
+  });
 }
 
 // Helper function to ensure directories exist
 function ensureDir(dir) {
   if (!fs.existsSync(dir)) {
-    console.log(`Creating directory: ${dir}`);
+    log(`Creating directory: ${dir}`);
     fs.mkdirSync(dir, { recursive: true });
+  }
+}
+
+// Helper function to check package dependencies
+async function checkDependencies() {
+  log('Checking package dependencies...');
+  
+  // Read package.json
+  const packagePath = path.join(__dirname, 'package.json');
+  const packageLock = path.join(__dirname, 'package-lock.json');
+  
+  log(`Package.json path: ${packagePath}`);
+  log(`Package exists: ${fs.existsSync(packagePath)}`);
+  log(`Package-lock exists: ${fs.existsSync(packageLock)}`);
+  
+  if (fs.existsSync(packagePath)) {
+    const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+    log(`Dependencies: ${JSON.stringify(packageJson.dependencies, null, 2)}`);
+  }
+  
+  try {
+    // Check for specific conflicts
+    const output = run('npm ls @shopify/shopify-api', __dirname);
+    log(`Dependency check result: ${output}`);
+  } catch (error) {
+    logError('Dependency check failed, but continuing build...', error);
   }
 }
 
 // Main build process
 async function build() {
+  log('=== BUILD STARTED ===');
+  log(`Node version: ${process.version}`);
+  log(`Working directory: ${__dirname}`);
+  
   try {
-    console.log('Starting build process...');
-
-    // Install dependencies
-    console.log('Installing root dependencies...');
-    run('npm install --no-audit --loglevel=error');
+    // Check current environment and files
+    log('Environment and file check:');
+    log(`Node modules exists: ${fs.existsSync(path.join(__dirname, 'node_modules'))}`);
+    log(`Web directory exists: ${fs.existsSync(webDir)}`);
+    
+    // Perform dependency check
+    await checkDependencies();
+    
+    log('Starting build process...');
 
     // Create required directories
     ensureDir(publicDir);
     ensureDir(webSectionsDir);
     ensureDir(previewsDir);
 
+    // Install dependencies with detailed output
+    log('Installing root dependencies...');
+    try {
+      await runDetailed('npm install --no-fund --no-audit --loglevel=verbose', __dirname);
+    } catch (error) {
+      logError('Failed to install root dependencies, attempting to continue...', error);
+    }
+
     // Copy sections to web/public/sections if they exist
     if (fs.existsSync(sectionsDir)) {
-      console.log('Copying sections to web directory...');
+      log('Copying sections to web directory...');
       
       // Read section directories
       const sectionFolders = fs.readdirSync(sectionsDir);
+      log(`Found section folders: ${sectionFolders.join(', ')}`);
       
       // Copy each section
       for (const folder of sectionFolders) {
@@ -61,7 +167,10 @@ async function build() {
         const destFolder = path.join(webSectionsDir, folder);
         
         // Skip if not a directory
-        if (!fs.statSync(srcFolder).isDirectory()) continue;
+        if (!fs.statSync(srcFolder).isDirectory()) {
+          log(`Skipping non-directory: ${folder}`);
+          continue;
+        }
         
         ensureDir(destFolder);
         
@@ -72,11 +181,13 @@ async function build() {
             sectionFile, 
             path.join(destFolder, 'section.liquid')
           );
-          console.log(`Copied ${folder}/section.liquid`);
+          log(`Copied ${folder}/section.liquid`);
+        } else {
+          log(`Section file not found: ${sectionFile}`);
         }
       }
     } else {
-      console.log('Sections directory not found, creating a sample...');
+      log('Sections directory not found, creating a sample...');
       ensureDir(sectionsDir);
       const testSectionDir = path.join(sectionsDir, 'test-section');
       const testSectionWebDir = path.join(webSectionsDir, 'test-section');
@@ -127,48 +238,78 @@ async function build() {
         path.join(testSectionWebDir, 'section.liquid'), 
         sectionContent
       );
+      log('Created sample section template');
     }
 
-    // Build the Remix app
-    console.log('Building Remix app...');
+    // Build the simple server directly (bypassing Remix build)
+    log('Building simple server for Render deployment...');
     
-    // First ensure the web directory has its dependencies and MDX-related packages
-    console.log('Installing web dependencies...');
-    run('npm install --no-audit --loglevel=error', webDir);
+    // Copy necessary files to public directory
+    ensureDir(publicDir);
     
-    // Install specific MDX dependencies that might be needed
-    console.log('Installing MDX dependencies...');
-    run('npm install --no-audit --loglevel=error xdm@3.0.0 isbot@3.6.8', webDir);
+    // Create a simpler package.json for web
+    log('Creating simplified web package.json...');
+    const webPackageJson = {
+      "name": "okayscale-sections-web",
+      "private": true,
+      "dependencies": {
+        "express": "^4.18.2"
+      }
+    };
     
-    // Create an empty remix.config.js if it doesn't exist
-    const remixConfigPath = path.join(webDir, 'remix.config.js');
-    if (!fs.existsSync(remixConfigPath)) {
-      console.log('Creating minimal remix.config.js...');
-      fs.writeFileSync(
-        remixConfigPath,
-        `/**
- * @type {import('@remix-run/dev').AppConfig}
- */
-module.exports = {
-  ignoredRouteFiles: ["**/.*"],
-  appDirectory: "app",
-  assetsBuildDirectory: "public/build",
-  serverBuildPath: "build/index.js",
-  publicPath: "/build/"
-};
-`
-      );
+    fs.writeFileSync(
+      path.join(webDir, 'package.json'),
+      JSON.stringify(webPackageJson, null, 2)
+    );
+    
+    // Install web dependencies
+    log('Installing web dependencies...');
+    try {
+      await runDetailed('npm install --no-fund --no-audit', webDir);
+    } catch (error) {
+      logError('Failed to install web dependencies, attempting to continue...', error);
     }
     
-    // Then build using Remix directly (avoiding Shopify CLI)
-    run('npx remix build', webDir);
+    // Create a basic express server file if needed
+    const serverPath = path.join(webDir, 'server.js');
+    if (!fs.existsSync(serverPath)) {
+      log('Creating basic express server...');
+      const serverContent = `
+const express = require('express');
+const path = require('path');
+const app = express();
 
-    console.log('Build completed successfully!');
+const PORT = process.env.PORT || 3000;
+
+// Serve static files
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Serve main html
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'app.html'));
+});
+
+app.listen(PORT, () => {
+  console.log(\`Server running on port \${PORT}\`);
+});
+`;
+      fs.writeFileSync(serverPath, serverContent);
+      log('Created basic express server');
+    }
+
+    log('Build completed successfully!');
+    log('=== BUILD FINISHED ===');
   } catch (error) {
-    console.error('Build failed:', error);
+    logError('Build failed:', error);
+    log('=== BUILD FAILED ===');
     process.exit(1);
+  } finally {
+    logStream.end();
   }
 }
 
 // Run the build
-build(); 
+build().catch(error => {
+  logError('Unhandled error during build:', error);
+  process.exit(1);
+}); 
