@@ -18,12 +18,12 @@ export default function App() {
         <Links />
       </head>
       <body>
-        <AppProvider isEmbeddedApp>
+        <AppProvider>
           <Outlet />
         </AppProvider>
         <ScrollRestoration />
-        <Scripts />
         <LiveReload />
+        <Scripts />
       </body>
     </html>
   );

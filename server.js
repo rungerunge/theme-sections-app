@@ -1,39 +1,40 @@
-const express = require("express");
-const path = require("path");
-const compression = require("compression");
-const morgan = require("morgan");
-const { createRequestHandler } = require("@remix-run/express");
+import "@shopify/shopify-app-remix/adapters/node";
+import {
+  createRequestHandler,
+  getSessionStorage,
+} from "@shopify/shopify-app-remix/server";
+import { createStorefrontClient } from "@shopify/hydrogen";
+import { HydrogenSession } from "@shopify/remix-oxygen";
+import { AppSession } from "@shopify/shopify-app-session-storage";
+import express from "express";
+import { createRequire } from "module";
+import { join } from "path";
+import { fileURLToPath } from "url";
+import { authenticate } from "./shopify.server";
 
-const BUILD_DIR = path.join(process.cwd(), "build");
+const require = createRequire(import.meta.url);
+const BUILD_DIR = join(process.cwd(), "build");
+const PORT = parseInt(process.env.PORT || "8081", 10);
 
 const app = express();
 
-// http://expressjs.com/en/advanced/best-practice-security.html#at-a-minimum-disable-x-powered-by-header
-app.disable("x-powered-by");
+// Setup Shopify auth
+app.get("/api/auth", authenticate.begin());
+app.get("/api/auth/callback", authenticate.callback());
+app.get("/api/auth/redirect", authenticate.redirectToShopifyOrAppRoot());
 
-// Compress responses
-app.use(compression());
+// Static assets
+app.use(express.static("public"));
+app.use(express.static("build/client"));
 
-// Add logging middleware
-app.use(morgan("tiny"));
+// All routes after this point will require authentication
+app.use("/api/*", authenticate.validateAuthenticatedSession());
 
-// Static files
-app.use(express.static("public", { maxAge: "1h" }));
+app.all("*", createRequestHandler({
+  build: require(BUILD_DIR),
+  mode: process.env.NODE_ENV,
+}));
 
-// Remix build files
-app.use("/build", express.static("public/build", { immutable: true, maxAge: "1y" }));
-
-// Everything else
-app.all(
-  "*",
-  createRequestHandler({
-    build: require(BUILD_DIR),
-    mode: process.env.NODE_ENV || "production",
-  })
-);
-
-const port = process.env.PORT || 3000;
-
-app.listen(port, () => {
-  console.log(`Express server listening on port ${port}`);
+app.listen(PORT, () => {
+  console.log(`Server listening on port ${PORT}`);
 }); 

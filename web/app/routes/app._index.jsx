@@ -1,85 +1,52 @@
-import { useEffect, useState } from "react";
-import {
-  Page,
-  Layout,
-  Card,
-  Button,
-  ResourceList,
-  ResourceItem,
-  Text,
-  Banner,
-  Loading,
-} from "@shopify/polaris";
-import { authenticate } from "../shopify.server";
+import { useEffect } from "react";
 import { json } from "@remix-run/node";
+import { useLoaderData } from "@remix-run/react";
+import { Page, Layout, Card, ResourceList } from "@shopify/polaris";
+import { authenticate } from "../shopify.server";
 
-export async function loader({ request }) {
+export const loader = async ({ request }) => {
   await authenticate.admin(request);
-  return json({ ok: true });
-}
+
+  return json({
+    sections: [
+      {
+        id: "todo-list",
+        title: "Todo List Section",
+        description: "A customizable todo list section for your store",
+        preview: "/section-previews/todo-list/preview.png"
+      }
+    ]
+  });
+};
 
 export default function Index() {
-  const [sections, setSections] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { sections } = useLoaderData();
 
   useEffect(() => {
-    // Load available sections
-    fetch('/api/sections')
-      .then(res => res.json())
-      .then(data => {
-        setSections(data.sections || []);
-        setIsLoading(false);
-      })
-      .catch(err => {
-        setError("Failed to load sections");
-        setIsLoading(false);
-      });
+    // Initialize any app bridge features here
   }, []);
 
-  if (isLoading) {
-    return <Loading />;
-  }
-
   return (
-    <Page title="Theme Sections">
+    <Page title="Section Store">
       <Layout>
-        {error && (
-          <Layout.Section>
-            <Banner status="critical">{error}</Banner>
-          </Layout.Section>
-        )}
-        
         <Layout.Section>
           <Card>
             <ResourceList
               items={sections}
               renderItem={(section) => (
-                <ResourceItem
+                <ResourceList.Item
                   id={section.id}
                   media={
-                    <img
-                      src={section.previewUrl}
+                    <img 
+                      src={section.preview}
                       alt={section.title}
-                      style={{ width: "100%", maxWidth: "200px" }}
+                      style={{ width: 100, height: 100, objectFit: "cover" }}
                     />
                   }
                 >
-                  <Text variant="headingMd" as="h3">
-                    {section.title}
-                  </Text>
-                  <Text variant="bodyMd" as="p">
-                    {section.description}
-                  </Text>
-                  <div style={{ marginTop: "1rem" }}>
-                    <Button
-                      primary
-                      onClick={() => handleInstallSection(section.id)}
-                    >
-                      Install Section
-                    </Button>
-                  </div>
-                </ResourceItem>
+                  <h3>{section.title}</h3>
+                  <p>{section.description}</p>
+                </ResourceList.Item>
               )}
             />
           </Card>
