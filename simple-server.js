@@ -369,10 +369,13 @@ app.get('/auth', (req, res) => {
     return res.status(400).send('Missing shop parameter. Please add ?shop=your-shop.myshopify.com to the URL.');
   }
   
+  logMessage(`Initiating OAuth for shop: ${shop}`);
+  
   // Construct the authorization URL
   const redirectUri = `${HOST}/auth/callback`;
   const installUrl = `https://${shop}/admin/oauth/authorize?client_id=${SHOPIFY_API_KEY}&scope=${SCOPES}&redirect_uri=${redirectUri}`;
   
+  logMessage(`Redirecting to: ${installUrl}`);
   res.redirect(installUrl);
 });
 
@@ -380,11 +383,16 @@ app.get('/auth', (req, res) => {
 app.get('/auth/callback', async (req, res) => {
   const { shop, hmac, code, state } = req.query;
   
+  logMessage(`Received OAuth callback for shop: ${shop}`);
+  
   if (!shop || !code) {
+    logMessage('Missing required OAuth parameters', true);
     return res.status(400).send('Required parameters missing');
   }
   
   try {
+    logMessage(`Exchanging temporary code for permanent token for shop: ${shop}`);
+    
     // Exchange the temporary code for a permanent access token
     const response = await axios.post(`https://${shop}/admin/oauth/access_token`, {
       client_id: SHOPIFY_API_KEY,
@@ -397,13 +405,16 @@ app.get('/auth/callback', async (req, res) => {
     // For demo purposes, we're storing the token for the shop
     // In a real app, you'd save this to a database
     PRIVATE_APP_TOKENS[shop] = accessToken;
-    logMessage(`Stored access token for ${shop}`);
+    logMessage(`Successfully stored access token for ${shop}`);
     
     // Redirect to the app
     res.redirect(`/web/public/app.html?shop=${shop}`);
   } catch (error) {
-    logMessage('Error completing OAuth: ' + error.message, true);
-    res.status(500).send('Error completing OAuth flow');
+    logMessage(`Error completing OAuth: ${error.message}`, true);
+    if (error.response) {
+      logMessage(`OAuth error response: ${JSON.stringify(error.response.data)}`, true);
+    }
+    res.status(500).send('Error completing OAuth flow. Please check server logs.');
   }
 });
 
