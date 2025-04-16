@@ -217,6 +217,40 @@
             padding: 3px 8px;
             border-radius: 4px;
         }
+        .error-banner {
+            background-color: #fee2e2;
+            border: 1px solid #f87171;
+            color: #b91c1c;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .error-banner i {
+            font-size: 18px;
+            margin-right: 10px;
+        }
+        .error-banner .close-btn {
+            background: none;
+            border: none;
+            color: #b91c1c;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
@@ -225,12 +259,25 @@
         <div class="header">
             <div class="d-flex justify-content-between align-items-center">
                 <h1><i class="fa-solid fa-cube me-2"></i> Section Store</h1>
-                <div>
-                    <select id="theme-dropdown" class="form-select">
+                <div class="d-flex align-items-center">
+                    <select id="theme-dropdown" class="form-select me-2">
                         <option value="" selected>Select Theme...</option>
                     </select>
+                    <button class="btn btn-primary select-theme-btn">
+                        <i class="fa-solid fa-check me-1"></i> Use Theme
+                    </button>
                 </div>
             </div>
+        </div>
+
+        <div id="error-banner" class="error-banner" style="display: none;">
+            <div>
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span id="error-message">Error message will appear here</span>
+            </div>
+            <button class="close-btn" onclick="document.getElementById('error-banner').style.display='none';">
+                <i class="fa-solid fa-times"></i>
+            </button>
         </div>
 
         <div class="tab-container">
@@ -328,6 +375,7 @@
         const notification = document.getElementById('notification');
         const notificationMessage = document.getElementById('notification-message');
         const categoryItems = document.querySelectorAll('.category-item');
+        const selectThemeButton = document.querySelector('.select-theme-btn') || document.createElement('button');
         
         // Sections Data (hardcoded for now, this would normally come from an API)
         const sections = [
@@ -416,6 +464,7 @@
         // Event Listeners
         searchInput.addEventListener('input', filterSections);
         themeDropdown.addEventListener('change', updateSelectedTheme);
+        document.querySelector('.select-theme-btn').addEventListener('click', handleThemeSelection);
         
         // Initialize tabs
         tabButtons.forEach(button => {
@@ -454,47 +503,108 @@
         
         function loadShopInfo() {
             // In a real app, you would get this from Shopify
-            // For now, we'll use a mock value
+            // For now, we'll use the demo store
             const shopDomain = 'okayscaledemo.myshopify.com';
             connectedStore = shopDomain;
+            
+            // Display loading state for themes
+            themeDropdown.innerHTML = '<option value="">Loading themes...</option>';
+            themeDropdown.disabled = true;
             
             // Load themes
             loadThemes(shopDomain);
         }
         
         function loadThemes(shop) {
+            console.log('Fetching themes for shop:', shop);
+            
+            // Update button to show loading state
+            const selectBtn = document.querySelector('.select-theme-btn');
+            const originalBtnText = selectBtn.innerHTML;
+            selectBtn.innerHTML = '<span class="spinner me-2"></span>Loading themes...';
+            selectBtn.disabled = true;
+            
             fetch(`/api/themes?shop=${shop}`)
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
+                    console.log('Themes data:', data);
                     if (data.success && data.themes) {
                         availableThemes = data.themes;
                         populateThemeDropdown(data.themes);
+                        showSuccess('Successfully loaded themes');
                     } else {
-                        showNotification('Failed to load themes', 'error');
+                        showError('Failed to load themes: ' + (data.message || 'Unknown error'));
+                        console.error('Theme loading error:', data);
+                        themeDropdown.innerHTML = '<option value="">Select Theme...</option>';
+                        themeDropdown.disabled = false;
                     }
+                    
+                    // Reset button state
+                    selectBtn.innerHTML = originalBtnText;
+                    selectBtn.disabled = false;
                 })
                 .catch(error => {
+                    showError('Error loading themes: ' + error.message);
                     console.error('Error loading themes:', error);
+                    themeDropdown.innerHTML = '<option value="">Select Theme...</option>';
+                    themeDropdown.disabled = false;
+                    
+                    // Reset button state
+                    selectBtn.innerHTML = originalBtnText;
+                    selectBtn.disabled = false;
                 });
         }
         
         function populateThemeDropdown(themes) {
             themeDropdown.innerHTML = '<option value="">Select Theme...</option>';
+            themeDropdown.disabled = false;
             
-            themes.forEach(theme => {
-                const option = document.createElement('option');
-                option.value = theme.id;
-                option.textContent = `${theme.name} ${theme.role === 'main' ? '(Live)' : ''}`;
-                if (theme.role === 'main') {
-                    option.selected = true;
-                }
-                themeDropdown.appendChild(option);
-            });
+            if (themes && themes.length > 0) {
+                themes.forEach(theme => {
+                    const option = document.createElement('option');
+                    option.value = theme.id;
+                    option.textContent = `${theme.name} ${theme.role === 'main' ? '(Live)' : ''}`;
+                    if (theme.role === 'main') {
+                        option.selected = true;
+                    }
+                    themeDropdown.appendChild(option);
+                });
+            } else {
+                showError('No themes available');
+            }
+        }
+        
+        function handleThemeSelection() {
+            const selectedThemeId = themeDropdown.value;
+            
+            if (!selectedThemeId) {
+                showError('Please select a theme from the dropdown');
+                return;
+            }
+            
+            const selectedTheme = availableThemes.find(theme => theme.id == selectedThemeId);
+            if (selectedTheme) {
+                showSuccess(`Theme selected: ${selectedTheme.name}`);
+                console.log('Selected theme:', selectedTheme);
+            }
         }
         
         function updateSelectedTheme() {
-            // For future implementation if needed
-            console.log('Selected theme:', themeDropdown.value);
+            // Update selected theme
+            const selectedThemeId = themeDropdown.value;
+            console.log('Theme dropdown changed to:', selectedThemeId);
+            
+            if (selectedThemeId) {
+                const selectedTheme = availableThemes.find(theme => theme.id == selectedThemeId);
+                if (selectedTheme) {
+                    console.log('Selected theme details:', selectedTheme);
+                }
+            }
         }
         
         function renderExploreSections(sectionsData) {
@@ -595,7 +705,7 @@
             const selectedThemeId = themeDropdown.value;
             
             if (!selectedThemeId) {
-                showNotification('Please select a theme first', 'error');
+                showError('Please select a theme first');
                 return;
             }
             
@@ -617,21 +727,26 @@
                     themeId: selectedThemeId
                 }),
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 button.textContent = originalText;
                 button.disabled = false;
                 
                 if (data.success) {
-                    showNotification(`Added "${sectionId}" to theme: ${data.themeName}`, 'success');
+                    showSuccess(`Added "${sectionId}" to theme: ${data.themeName}`);
                 } else {
-                    showNotification(data.message || 'Failed to add section', 'error');
+                    showError(data.message || 'Failed to add section');
                 }
             })
             .catch(error => {
                 button.textContent = originalText;
                 button.disabled = false;
-                showNotification('Error adding section to theme', 'error');
+                showError('Error adding section to theme: ' + error.message);
                 console.error('Error:', error);
             });
         }
@@ -699,6 +814,26 @@
             setTimeout(() => {
                 notification.classList.remove('show');
             }, 3000);
+        }
+        
+        function showSuccess(message) {
+            showNotification(message, 'success');
+        }
+        
+        function showError(message) {
+            showNotification(message, 'error');
+            
+            // Also show in the error banner for persistent errors
+            const errorBanner = document.getElementById('error-banner');
+            const errorMessage = document.getElementById('error-message');
+            
+            errorMessage.textContent = message;
+            errorBanner.style.display = 'flex';
+            
+            // Auto-hide after 10 seconds
+            setTimeout(() => {
+                errorBanner.style.display = 'none';
+            }, 10000);
         }
     </script>
 </body>

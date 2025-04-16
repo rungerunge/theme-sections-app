@@ -9,6 +9,16 @@ alwaysApply: true
 This private Shopify app is developed for OkayScale's marketing clients. It allows them to browse a curated library of custom Shopify sections and add selected sections directly into their active or development theme via a simple UI. This app acts similarly to the "Section Store" app but is designed for private use only.
 
 Once you are done with changes, make sure to always push the changes to github repo. 
+
+Always think debugging. Always implement advanced debugging so we can easily identify errors when they occur. 
+
+The app should work like this:
+
+1. First page the customer sees when they open the app is a clean overview of all the sections they can choose from.
+
+2. The user can then add the section to "My Sections" 
+
+3. From "My Sections" the user can add the section to their theme. When clicked it will automatically be added to their theme and they can then add the section in their theme editor after. 
 ---
 
 ## Core Features
