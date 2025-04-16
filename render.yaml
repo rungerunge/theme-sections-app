@@ -10,9 +10,9 @@ services:
       - key: NODE_ENV
         value: production
       - key: SHOPIFY_API_KEY
-        value: cf5df4d826a3faea551a29eec40ad090
+        sync: false
       - key: SHOPIFY_API_SECRET
-        value: a750fba3926ae2137fdac14dff34631c
+        sync: false
       - key: SCOPES
         value: read_themes,write_themes,read_files,write_files,read_content,write_content,read_products,write_products,read_script_tags,write_script_tags
       - key: PORT

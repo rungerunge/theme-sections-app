@@ -32,8 +32,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Shopify API credentials
-const SHOPIFY_API_KEY = process.env.SHOPIFY_API_KEY || 'cf5df4d826a3faea551a29eec40ad090';
-const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET || 'a750fba3926ae2137fdac14dff34631c';
+const SHOPIFY_API_KEY = process.env.SHOPIFY_API_KEY;
+const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET;
 const HOST = process.env.HOST || 'https://theme-sections-app-chjk.onrender.com';
 const SCOPES = process.env.SCOPES || 'read_themes,write_themes,read_files,write_files,read_content,write_content,read_products,write_products,read_script_tags,write_script_tags';
 
