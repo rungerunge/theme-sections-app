@@ -454,42 +454,74 @@
         
         function loadShopInfo() {
             // In a real app, you would get this from Shopify
-            // For now, we'll use a mock value
+            // For now, we'll use the demo store
             const shopDomain = 'okayscaledemo.myshopify.com';
             connectedStore = shopDomain;
+            
+            // Display loading state for themes
+            themeDropdown.innerHTML = '<option value="">Loading themes...</option>';
+            themeDropdown.disabled = true;
             
             // Load themes
             loadThemes(shopDomain);
         }
         
         function loadThemes(shop) {
+            console.log('Fetching themes for shop:', shop);
+            
             fetch(`/api/themes?shop=${shop}`)
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
+                    console.log('Themes data:', data);
                     if (data.success && data.themes) {
                         availableThemes = data.themes;
                         populateThemeDropdown(data.themes);
+                        showSuccess('Successfully loaded themes');
                     } else {
-                        showNotification('Failed to load themes', 'error');
+                        showError('Failed to load themes: ' + (data.message || 'Unknown error'));
+                        console.error('Theme loading error:', data);
+                        themeDropdown.innerHTML = '<option value="">Select Theme...</option>';
+                        themeDropdown.disabled = false;
                     }
                 })
                 .catch(error => {
+                    showError('Error loading themes: ' + error.message);
                     console.error('Error loading themes:', error);
+                    themeDropdown.innerHTML = '<option value="">Select Theme...</option>';
+                    themeDropdown.disabled = false;
                 });
         }
         
         function populateThemeDropdown(themes) {
             themeDropdown.innerHTML = '<option value="">Select Theme...</option>';
+            themeDropdown.disabled = false;
             
-            themes.forEach(theme => {
-                const option = document.createElement('option');
-                option.value = theme.id;
-                option.textContent = `${theme.name} ${theme.role === 'main' ? '(Live)' : ''}`;
-                if (theme.role === 'main') {
-                    option.selected = true;
-                }
-                themeDropdown.appendChild(option);
-            });
+            if (themes && themes.length > 0) {
+                themes.forEach(theme => {
+                    const option = document.createElement('option');
+                    option.value = theme.id;
+                    option.textContent = `${theme.name} ${theme.role === 'main' ? '(Live)' : ''}`;
+                    if (theme.role === 'main') {
+                        option.selected = true;
+                    }
+                    themeDropdown.appendChild(option);
+                });
+            } else {
+                showError('No themes available');
+            }
+        }
+        
+        function showSuccess(message) {
+            showNotification(message, 'success');
+        }
+        
+        function showError(message) {
+            showNotification(message, 'error');
         }
         
         function updateSelectedTheme() {

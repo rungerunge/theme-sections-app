@@ -150,11 +150,16 @@ app.get('/api/themes', async (req, res) => {
   // Get the access token for this shop
   const accessToken = PRIVATE_APP_TOKENS[shop];
   if (!accessToken) {
-    return res.status(404).json({ error: 'Store not authorized' });
+    logMessage(`No access token found for shop: ${shop}`, true);
+    return res.status(404).json({ 
+      error: 'Store not authorized',
+      message: 'This store is not authorized. Please check env variables.' 
+    });
   }
   
   try {
     logMessage(`Fetching themes for shop: ${shop}`);
+    logMessage(`Using access token: ${accessToken ? 'Valid token' : 'No token available'}`);
     
     // Get themes from Shopify
     const themesResponse = await axios.get(`https://${shop}/admin/api/2024-01/themes.json`, {
@@ -174,6 +179,11 @@ app.get('/api/themes', async (req, res) => {
     logMessage(`Error fetching themes: ${error.message}`, true);
     if (error.response) {
       logMessage(`API response: ${JSON.stringify(error.response.data)}`, true);
+      return res.status(error.response.status).json({
+        error: 'Error fetching themes',
+        message: error.response.data.errors || error.message,
+        details: error.response.data
+      });
     }
     
     return res.status(500).json({
