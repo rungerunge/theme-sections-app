@@ -19,4 +19,4 @@ services:
       - key: HOST
         value: https://theme-sections-app-chjk.onrender.com
       - key: OKAYSCALE_DEMO_TOKEN
-        value: ${OKAYSCALE_DEMO_TOKEN} 
+        sync: false
