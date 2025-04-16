@@ -40,7 +40,7 @@ const SCOPES = process.env.SCOPES || 'read_themes,write_themes,read_files,write_
 // Private app credentials - store tokens securely
 const PRIVATE_APP_TOKENS = {
   // Format: 'shop-name.myshopify.com': 'access_token'
-  'okayscaledemo.myshopify.com': process.env.OKAYSCALE_DEMO_TOKEN || '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',
+  'okayscaledemo.myshopify.com': process.env.OKAYSCALE_DEMO_TOKEN || '',
   // Add more stores and their tokens as needed
 };
 
