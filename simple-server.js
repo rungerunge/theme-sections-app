@@ -87,7 +87,13 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Default route for app entry - this handles the initial installation flow
+// Add a new route for the special installer
+app.get('/install-with-scopes', (req, res) => {
+  logMessage('Serving special installation page');
+  res.sendFile(path.join(__dirname, 'web', 'public', 'install-with-scopes.html'));
+});
+
+// Original install route
 app.get('/install', (req, res) => {
   logMessage('Serving installation page');
   res.sendFile(path.join(__dirname, 'web', 'public', 'install.html'));
