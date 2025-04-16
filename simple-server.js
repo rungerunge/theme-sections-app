@@ -87,9 +87,31 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Default route for app entry - this handles the initial installation flow
+app.get('/install', (req, res) => {
+  logMessage('Serving installation page');
+  res.sendFile(path.join(__dirname, 'web', 'public', 'install.html'));
+});
+
 // Root endpoint
 app.get('/', (req, res) => {
   logMessage('Received request to root endpoint');
+  
+  // Check if shop parameter is provided
+  const shop = req.query.shop;
+  if (!shop) {
+    logMessage('No shop parameter provided, redirecting to install page');
+    return res.redirect('/install');
+  }
+
+  // Check if the shop has a valid token
+  const accessToken = PRIVATE_APP_TOKENS[shop];
+  if (!accessToken) {
+    logMessage(`No token found for shop: ${shop}, redirecting to auth`);
+    // Redirect to auth
+    return res.redirect(`/auth?shop=${shop}`);
+  }
+  
   const appHtmlPath = path.join(__dirname, 'web', 'public', 'app.html');
   
   if (fs.existsSync(appHtmlPath)) {
@@ -104,6 +126,21 @@ app.get('/', (req, res) => {
 // Direct route to the app
 app.get('/app', (req, res) => {
   logMessage('Received request to /app endpoint');
+  
+  // Check if shop parameter is provided
+  const shop = req.query.shop;
+  if (!shop) {
+    return res.status(400).send('Shop parameter is required. Please add ?shop=your-shop.myshopify.com to the URL.');
+  }
+
+  // Check if the shop has a valid token
+  const accessToken = PRIVATE_APP_TOKENS[shop];
+  if (!accessToken) {
+    logMessage(`No token found for shop: ${shop}, redirecting to auth`);
+    // Redirect to auth
+    return res.redirect(`/auth?shop=${shop}`);
+  }
+  
   const appHtmlPath = path.join(__dirname, 'web', 'public', 'app.html');
   
   if (fs.existsSync(appHtmlPath)) {
@@ -408,7 +445,7 @@ app.get('/auth/callback', async (req, res) => {
     logMessage(`Successfully stored access token for ${shop}`);
     
     // Redirect to the app
-    res.redirect(`/web/public/app.html?shop=${shop}`);
+    res.redirect(`/app?shop=${shop}`);
   } catch (error) {
     logMessage(`Error completing OAuth: ${error.message}`, true);
     if (error.response) {

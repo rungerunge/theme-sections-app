@@ -226,9 +226,6 @@
             <div class="d-flex justify-content-between align-items-center">
                 <h1><i class="fa-solid fa-cube me-2"></i> Section Store</h1>
                 <div class="d-flex align-items-center">
-                    <a href="/auth?shop=okayscaledemo.myshopify.com" class="btn btn-success me-3">
-                        <i class="fa-solid fa-key me-1"></i> Install App on Store
-                    </a>
                     <select id="theme-dropdown" class="form-select me-2">
                         <option value="" selected>Select Theme...</option>
                     </select>
@@ -463,36 +460,21 @@
             const urlParams = new URLSearchParams(window.location.search);
             const shopParam = urlParams.get('shop');
             
-            // Default to demo store if no shop in URL
-            const shopDomain = shopParam || 'okayscaledemo.myshopify.com';
-            connectedStore = shopDomain;
+            if (!shopParam) {
+                showError('No shop parameter provided. Please reinstall the app.');
+                return;
+            }
             
-            console.log('Loading shop info for:', shopDomain);
+            // Use the shop from URL
+            connectedStore = shopParam;
+            console.log('Loading shop info for:', connectedStore);
             
             // Display loading state for themes
             themeDropdown.innerHTML = '<option value="">Loading themes...</option>';
             themeDropdown.disabled = true;
             
-            // Check if authenticated before loading themes
-            fetch(`/api/connect-store?shop=${shopDomain}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Store is connected, load themes
-                        loadThemes(shopDomain);
-                    } else {
-                        // Not authenticated, show error
-                        showError('Store not authenticated. Please click "Install App on Store" button to connect.');
-                        themeDropdown.innerHTML = '<option value="">Select Theme...</option>';
-                        themeDropdown.disabled = true;
-                    }
-                })
-                .catch(error => {
-                    console.error('Error checking store connection:', error);
-                    showError('Failed to verify store connection. Please try installing the app again.');
-                    themeDropdown.innerHTML = '<option value="">Select Theme...</option>';
-                    themeDropdown.disabled = true;
-                });
+            // Load themes directly as we're already authenticated
+            loadThemes(connectedStore);
         }
         
         function loadThemes(shop) {
