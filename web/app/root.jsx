@@ -8,7 +8,6 @@ import {
 } from "@remix-run/react";
 import { AppProvider } from "@shopify/shopify-app-remix/react";
 import "@shopify/polaris/build/esm/styles.css";
-import { PolarisProvider } from "@shopify/polaris";
 
 export default function App() {
   return (
@@ -21,9 +20,7 @@ export default function App() {
       </head>
       <body>
         <AppProvider isEmbeddedApp={true}>
-          <PolarisProvider>
-            <Outlet />
-          </PolarisProvider>
+          <Outlet />
         </AppProvider>
         <ScrollRestoration />
         <LiveReload />
