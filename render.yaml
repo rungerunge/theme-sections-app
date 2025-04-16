@@ -17,4 +17,6 @@ services:
       - key: PORT
         value: 3000
       - key: HOST
-        value: https://theme-sections-app-chjk.onrender.com 
+        value: https://theme-sections-app-chjk.onrender.com
+      - key: OKAYSCALE_DEMO_TOKEN
+        sync: false 

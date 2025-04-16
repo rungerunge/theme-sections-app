@@ -40,7 +40,7 @@ const SCOPES = process.env.SCOPES || 'read_themes,write_themes,read_files,write_
 // Private app credentials - store tokens securely
 const PRIVATE_APP_TOKENS = {
   // Format: 'shop-name.myshopify.com': 'access_token'
-  'okayscaledemo.myshopify.com': process.env.OKAYSCALE_DEMO_TOKEN || 'your_token_here',
+  'okayscaledemo.myshopify.com': process.env.OKAYSCALE_DEMO_TOKEN || '',
   // Add more stores and their tokens as needed
 };
 
@@ -150,11 +150,16 @@ app.get('/api/themes', async (req, res) => {
   // Get the access token for this shop
   const accessToken = PRIVATE_APP_TOKENS[shop];
   if (!accessToken) {
-    return res.status(404).json({ error: 'Store not authorized' });
+    logMessage(`No access token found for shop: ${shop}`, true);
+    return res.status(404).json({ 
+      error: 'Store not authorized',
+      message: 'This store is not authorized. Please check env variables or use the OAuth flow by clicking "Install App on Store".' 
+    });
   }
   
   try {
     logMessage(`Fetching themes for shop: ${shop}`);
+    logMessage(`Using access token: ${accessToken ? 'Valid token exists' : 'No token available'}`);
     
     // Get themes from Shopify
     const themesResponse = await axios.get(`https://${shop}/admin/api/2024-01/themes.json`, {
@@ -174,6 +179,11 @@ app.get('/api/themes', async (req, res) => {
     logMessage(`Error fetching themes: ${error.message}`, true);
     if (error.response) {
       logMessage(`API response: ${JSON.stringify(error.response.data)}`, true);
+      return res.status(error.response.status).json({
+        error: 'Error fetching themes',
+        message: error.response.data.errors || error.message,
+        details: error.response.data
+      });
     }
     
     return res.status(500).json({
@@ -359,10 +369,13 @@ app.get('/auth', (req, res) => {
     return res.status(400).send('Missing shop parameter. Please add ?shop=your-shop.myshopify.com to the URL.');
   }
   
+  logMessage(`Initiating OAuth for shop: ${shop}`);
+  
   // Construct the authorization URL
   const redirectUri = `${HOST}/auth/callback`;
   const installUrl = `https://${shop}/admin/oauth/authorize?client_id=${SHOPIFY_API_KEY}&scope=${SCOPES}&redirect_uri=${redirectUri}`;
   
+  logMessage(`Redirecting to: ${installUrl}`);
   res.redirect(installUrl);
 });
 
@@ -370,11 +383,16 @@ app.get('/auth', (req, res) => {
 app.get('/auth/callback', async (req, res) => {
   const { shop, hmac, code, state } = req.query;
   
+  logMessage(`Received OAuth callback for shop: ${shop}`);
+  
   if (!shop || !code) {
+    logMessage('Missing required OAuth parameters', true);
     return res.status(400).send('Required parameters missing');
   }
   
   try {
+    logMessage(`Exchanging temporary code for permanent token for shop: ${shop}`);
+    
     // Exchange the temporary code for a permanent access token
     const response = await axios.post(`https://${shop}/admin/oauth/access_token`, {
       client_id: SHOPIFY_API_KEY,
@@ -387,13 +405,16 @@ app.get('/auth/callback', async (req, res) => {
     // For demo purposes, we're storing the token for the shop
     // In a real app, you'd save this to a database
     PRIVATE_APP_TOKENS[shop] = accessToken;
-    logMessage(`Stored access token for ${shop}`);
+    logMessage(`Successfully stored access token for ${shop}`);
     
     // Redirect to the app
     res.redirect(`/web/public/app.html?shop=${shop}`);
   } catch (error) {
-    logMessage('Error completing OAuth: ' + error.message, true);
-    res.status(500).send('Error completing OAuth flow');
+    logMessage(`Error completing OAuth: ${error.message}`, true);
+    if (error.response) {
+      logMessage(`OAuth error response: ${JSON.stringify(error.response.data)}`, true);
+    }
+    res.status(500).send('Error completing OAuth flow. Please check server logs.');
   }
 });
 

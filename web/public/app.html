@@ -225,10 +225,16 @@
         <div class="header">
             <div class="d-flex justify-content-between align-items-center">
                 <h1><i class="fa-solid fa-cube me-2"></i> Section Store</h1>
-                <div>
-                    <select id="theme-dropdown" class="form-select">
+                <div class="d-flex align-items-center">
+                    <a href="/auth?shop=okayscaledemo.myshopify.com" class="btn btn-success me-3">
+                        <i class="fa-solid fa-key me-1"></i> Install App on Store
+                    </a>
+                    <select id="theme-dropdown" class="form-select me-2">
                         <option value="" selected>Select Theme...</option>
                     </select>
+                    <button class="btn btn-primary select-theme-btn">
+                        <i class="fa-solid fa-check me-1"></i> Use Theme
+                    </button>
                 </div>
             </div>
         </div>
@@ -453,43 +459,98 @@
         }
         
         function loadShopInfo() {
-            // In a real app, you would get this from Shopify
-            // For now, we'll use a mock value
-            const shopDomain = 'okayscaledemo.myshopify.com';
+            // Check URL parameters for shop info
+            const urlParams = new URLSearchParams(window.location.search);
+            const shopParam = urlParams.get('shop');
+            
+            // Default to demo store if no shop in URL
+            const shopDomain = shopParam || 'okayscaledemo.myshopify.com';
             connectedStore = shopDomain;
             
-            // Load themes
-            loadThemes(shopDomain);
-        }
-        
-        function loadThemes(shop) {
-            fetch(`/api/themes?shop=${shop}`)
+            console.log('Loading shop info for:', shopDomain);
+            
+            // Display loading state for themes
+            themeDropdown.innerHTML = '<option value="">Loading themes...</option>';
+            themeDropdown.disabled = true;
+            
+            // Check if authenticated before loading themes
+            fetch(`/api/connect-store?shop=${shopDomain}`)
                 .then(response => response.json())
                 .then(data => {
-                    if (data.success && data.themes) {
-                        availableThemes = data.themes;
-                        populateThemeDropdown(data.themes);
+                    if (data.success) {
+                        // Store is connected, load themes
+                        loadThemes(shopDomain);
                     } else {
-                        showNotification('Failed to load themes', 'error');
+                        // Not authenticated, show error
+                        showError('Store not authenticated. Please click "Install App on Store" button to connect.');
+                        themeDropdown.innerHTML = '<option value="">Select Theme...</option>';
+                        themeDropdown.disabled = true;
                     }
                 })
                 .catch(error => {
+                    console.error('Error checking store connection:', error);
+                    showError('Failed to verify store connection. Please try installing the app again.');
+                    themeDropdown.innerHTML = '<option value="">Select Theme...</option>';
+                    themeDropdown.disabled = true;
+                });
+        }
+        
+        function loadThemes(shop) {
+            console.log('Fetching themes for shop:', shop);
+            
+            fetch(`/api/themes?shop=${shop}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Themes data:', data);
+                    if (data.success && data.themes) {
+                        availableThemes = data.themes;
+                        populateThemeDropdown(data.themes);
+                        showSuccess('Successfully loaded themes');
+                    } else {
+                        showError('Failed to load themes: ' + (data.message || 'Unknown error'));
+                        console.error('Theme loading error:', data);
+                        themeDropdown.innerHTML = '<option value="">Select Theme...</option>';
+                        themeDropdown.disabled = false;
+                    }
+                })
+                .catch(error => {
+                    showError('Error loading themes: ' + error.message);
                     console.error('Error loading themes:', error);
+                    themeDropdown.innerHTML = '<option value="">Select Theme...</option>';
+                    themeDropdown.disabled = false;
                 });
         }
         
         function populateThemeDropdown(themes) {
             themeDropdown.innerHTML = '<option value="">Select Theme...</option>';
+            themeDropdown.disabled = false;
             
-            themes.forEach(theme => {
-                const option = document.createElement('option');
-                option.value = theme.id;
-                option.textContent = `${theme.name} ${theme.role === 'main' ? '(Live)' : ''}`;
-                if (theme.role === 'main') {
-                    option.selected = true;
-                }
-                themeDropdown.appendChild(option);
-            });
+            if (themes && themes.length > 0) {
+                themes.forEach(theme => {
+                    const option = document.createElement('option');
+                    option.value = theme.id;
+                    option.textContent = `${theme.name} ${theme.role === 'main' ? '(Live)' : ''}`;
+                    if (theme.role === 'main') {
+                        option.selected = true;
+                    }
+                    themeDropdown.appendChild(option);
+                });
+            } else {
+                showError('No themes available');
+            }
+        }
+        
+        function showSuccess(message) {
+            showNotification(message, 'success');
+        }
+        
+        function showError(message) {
+            showNotification(message, 'error');
         }
         
         function updateSelectedTheme() {
