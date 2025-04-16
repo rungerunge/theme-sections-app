@@ -412,11 +412,15 @@ app.get('/auth', (req, res) => {
     return res.status(400).send('Missing shop parameter. Please add ?shop=your-shop.myshopify.com to the URL.');
   }
   
-  logMessage(`Initiating OAuth for shop: ${shop}`);
+  // Define the exact scopes we want to request - use the explicit list rather than env variable
+  const requestedScopes = "read_themes,write_themes,read_files,write_files,read_content,write_content,read_products,write_products,read_script_tags,write_script_tags";
   
-  // Construct the authorization URL
+  logMessage(`Initiating OAuth for shop: ${shop}`);
+  logMessage(`Using scopes: ${requestedScopes}`);
+  
+  // Construct the authorization URL with explicit scopes
   const redirectUri = `${HOST}/auth/callback`;
-  const installUrl = `https://${shop}/admin/oauth/authorize?client_id=${SHOPIFY_API_KEY}&scope=${SCOPES}&redirect_uri=${redirectUri}`;
+  const installUrl = `https://${shop}/admin/oauth/authorize?client_id=${SHOPIFY_API_KEY}&scope=${requestedScopes}&redirect_uri=${redirectUri}`;
   
   logMessage(`Redirecting to: ${installUrl}`);
   res.redirect(installUrl);
