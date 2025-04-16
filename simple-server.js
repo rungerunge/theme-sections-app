@@ -100,8 +100,14 @@ app.get('/', (req, res) => {
   // Check if shop parameter is provided
   const shop = req.query.shop;
   if (!shop) {
-    logMessage('No shop parameter provided, redirecting to install page');
-    return res.redirect('/install');
+    logMessage('No shop parameter provided, serving installation page');
+    const installHtmlPath = path.join(__dirname, 'web', 'public', 'install.html');
+    
+    if (fs.existsSync(installHtmlPath)) {
+      return res.sendFile(installHtmlPath);
+    } else {
+      return res.redirect('/auth?shop=' + req.query.shop);
+    }
   }
 
   // Check if the shop has a valid token
@@ -444,14 +450,14 @@ app.get('/auth/callback', async (req, res) => {
     PRIVATE_APP_TOKENS[shop] = accessToken;
     logMessage(`Successfully stored access token for ${shop}`);
     
-    // Redirect to the app
-    res.redirect(`/app?shop=${shop}`);
+    // Redirect to the app with shop parameter
+    res.redirect(`/?shop=${shop}`);
   } catch (error) {
     logMessage(`Error completing OAuth: ${error.message}`, true);
     if (error.response) {
       logMessage(`OAuth error response: ${JSON.stringify(error.response.data)}`, true);
     }
-    res.status(500).send('Error completing OAuth flow. Please check server logs.');
+    res.status(500).send('Error completing OAuth flow. Please try again or contact support.');
   }
 });
 

@@ -473,7 +473,7 @@
             themeDropdown.innerHTML = '<option value="">Loading themes...</option>';
             themeDropdown.disabled = true;
             
-            // Load themes directly as we're already authenticated
+            // Load themes
             loadThemes(connectedStore);
         }
         
@@ -525,6 +525,8 @@
             } else {
                 showError('No themes available');
             }
+            
+            themeDropdown.disabled = false;
         }
         
         function showSuccess(message) {

@@ -9,94 +9,124 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
             background-color: #f8f9fa;
-            height: 100vh;
             display: flex;
-            align-items: center;
             justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
         }
         .install-container {
-            max-width: 600px;
+            max-width: 500px;
+            width: 100%;
             background-color: white;
-            border-radius: 10px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            padding: 30px;
             text-align: center;
         }
         .logo {
-            width: 80px;
-            height: 80px;
-            margin-bottom: 30px;
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: #5046e5;
         }
         h1 {
-            margin-bottom: 20px;
+            font-size: 24px;
             font-weight: 600;
+            margin-bottom: 20px;
         }
         .description {
-            color: #64748b;
+            color: #6b7280;
             margin-bottom: 30px;
+            font-size: 16px;
         }
         .install-form {
-            max-width: 400px;
-            margin: 0 auto;
+            margin-bottom: 20px;
+        }
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 16px;
         }
         .btn-install {
             background-color: #5046e5;
-            border-color: #5046e5;
-            width: 100%;
-            padding: 12px;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
             font-weight: 500;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.2s;
         }
         .btn-install:hover {
             background-color: #4338ca;
-            border-color: #4338ca;
         }
         .footer {
-            margin-top: 30px;
             font-size: 14px;
-            color: #94a3b8;
+            color: #9ca3af;
+            margin-top: 30px;
         }
     </style>
 </head>
 <body>
     <div class="install-container">
-        <svg class="logo" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="24" height="24" rx="4" fill="#5046e5"/>
-            <path d="M6 8h12v8H6V8z" fill="white"/>
-        </svg>
-        
+        <div class="logo">
+            <i class="fa-solid fa-cube"></i>
+        </div>
         <h1>OkayScale Section Store</h1>
         <p class="description">
-            Add beautiful custom sections to your Shopify store theme with just a few clicks.
-            Choose from a variety of section types including testimonials, features, hero banners and more.
+            Easily browse, select, and add custom sections to your Shopify theme.
+            Install the app to get started.
         </p>
         
-        <div class="install-form">
-            <form id="installForm">
-                <div class="mb-3">
-                    <input type="text" class="form-control" id="shopInput" placeholder="yourstorename.myshopify.com" required>
-                </div>
-                <button type="submit" class="btn btn-primary btn-install">Install on your Store</button>
-            </form>
-        </div>
+        <form id="install-form" class="install-form">
+            <input type="text" id="shop-input" name="shop" placeholder="your-store.myshopify.com" class="form-input" required>
+            <button type="submit" class="btn-install">
+                Install App
+            </button>
+        </form>
         
         <div class="footer">
-            <p>By installing, you agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.</p>
+            By OkayScale &copy; 2024
         </div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/js/all.min.js"></script>
     <script>
-        document.getElementById('installForm').addEventListener('submit', function(e) {
-            e.preventDefault();
+        // Handle the form submission
+        document.getElementById('install-form').addEventListener('submit', function(event) {
+            event.preventDefault();
             
-            let shop = document.getElementById('shopInput').value.trim();
+            const shopInput = document.getElementById('shop-input');
+            let shop = shopInput.value.trim();
             
-            // Check if the shop domain is valid
-            if (!shop.includes('.myshopify.com')) {
-                shop += '.myshopify.com';
+            // Check if shop name is valid
+            if (!shop) {
+                alert('Please enter your shop domain');
+                return;
             }
             
-            // Redirect to the auth endpoint
-            window.location.href = `/auth?shop=${encodeURIComponent(shop)}`;
+            // Format shop if needed
+            if (!shop.includes('.myshopify.com')) {
+                shop = shop + '.myshopify.com';
+            }
+            
+            // Redirect to auth
+            window.location.href = `/auth?shop=${shop}`;
+        });
+        
+        // Check if there's a shop parameter in the URL
+        window.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const shopParam = urlParams.get('shop');
+            
+            if (shopParam) {
+                document.getElementById('shop-input').value = shopParam;
+            }
         });
     </script>
 </body>
