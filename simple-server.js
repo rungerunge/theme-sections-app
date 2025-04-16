@@ -90,6 +90,28 @@ app.get('/health', (req, res) => {
 // Root endpoint
 app.get('/', (req, res) => {
   logMessage('Received request to root endpoint');
+  
+  // Check if shop parameter is provided
+  const shop = req.query.shop;
+  if (!shop) {
+    logMessage('No shop parameter provided, serving installation page');
+    const installHtmlPath = path.join(__dirname, 'web', 'public', 'install.html');
+    
+    if (fs.existsSync(installHtmlPath)) {
+      return res.sendFile(installHtmlPath);
+    } else {
+      return res.redirect('/auth?shop=' + req.query.shop);
+    }
+  }
+
+  // Check if the shop has a valid token
+  const accessToken = PRIVATE_APP_TOKENS[shop];
+  if (!accessToken) {
+    logMessage(`No token found for shop: ${shop}, redirecting to auth`);
+    // Redirect to auth
+    return res.redirect(`/auth?shop=${shop}`);
+  }
+  
   const appHtmlPath = path.join(__dirname, 'web', 'public', 'app.html');
   
   if (fs.existsSync(appHtmlPath)) {
@@ -370,11 +392,16 @@ app.get('/auth', (req, res) => {
 app.get('/auth/callback', async (req, res) => {
   const { shop, hmac, code, state } = req.query;
   
+  logMessage(`Received OAuth callback for shop: ${shop}`);
+  
   if (!shop || !code) {
+    logMessage('Missing required OAuth parameters', true);
     return res.status(400).send('Required parameters missing');
   }
   
   try {
+    logMessage(`Exchanging temporary code for permanent token for shop: ${shop}`);
+    
     // Exchange the temporary code for a permanent access token
     const response = await axios.post(`https://${shop}/admin/oauth/access_token`, {
       client_id: SHOPIFY_API_KEY,
@@ -387,13 +414,16 @@ app.get('/auth/callback', async (req, res) => {
     // For demo purposes, we're storing the token for the shop
     // In a real app, you'd save this to a database
     PRIVATE_APP_TOKENS[shop] = accessToken;
-    logMessage(`Stored access token for ${shop}`);
+    logMessage(`Successfully stored access token for ${shop}`);
     
-    // Redirect to the app
-    res.redirect(`/web/public/app.html?shop=${shop}`);
+    // Redirect to the app with shop parameter
+    res.redirect(`/?shop=${shop}`);
   } catch (error) {
-    logMessage('Error completing OAuth: ' + error.message, true);
-    res.status(500).send('Error completing OAuth flow');
+    logMessage(`Error completing OAuth: ${error.message}`, true);
+    if (error.response) {
+      logMessage(`OAuth error response: ${JSON.stringify(error.response.data)}`, true);
+    }
+    res.status(500).send('Error completing OAuth flow. Please try again or contact support.');
   }
 });
 

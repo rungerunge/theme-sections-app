@@ -453,13 +453,25 @@
         }
         
         function loadShopInfo() {
-            // In a real app, you would get this from Shopify
-            // For now, we'll use a mock value
-            const shopDomain = 'okayscaledemo.myshopify.com';
-            connectedStore = shopDomain;
+            // Check URL parameters for shop info
+            const urlParams = new URLSearchParams(window.location.search);
+            const shopParam = urlParams.get('shop');
+            
+            if (!shopParam) {
+                showError('No shop parameter provided. Please reinstall the app.');
+                return;
+            }
+            
+            // Use the shop from URL
+            connectedStore = shopParam;
+            console.log('Loading shop info for:', connectedStore);
+            
+            // Display loading state for themes
+            themeDropdown.innerHTML = '<option value="">Loading themes...</option>';
+            themeDropdown.disabled = true;
             
             // Load themes
-            loadThemes(shopDomain);
+            loadThemes(connectedStore);
         }
         
         function loadThemes(shop) {
@@ -490,6 +502,8 @@
                 }
                 themeDropdown.appendChild(option);
             });
+            
+            themeDropdown.disabled = false;
         }
         
         function updateSelectedTheme() {
@@ -699,6 +713,10 @@
             setTimeout(() => {
                 notification.classList.remove('show');
             }, 3000);
+        }
+        
+        function showError(message) {
+            showNotification(message, 'error');
         }
     </script>
 </body>
