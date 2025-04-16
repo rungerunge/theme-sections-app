@@ -3,6 +3,7 @@ services:
     name: theme-sections-app
     env: node
     plan: free
+    branch: main
     buildCommand: npm ci --omit=dev
     startCommand: node simple-server.js
     envVars:
