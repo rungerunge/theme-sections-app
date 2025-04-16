@@ -1,22 +1,22 @@
-# This file contains the configuration for your Shopify app
-# Learn more about this config file at https://shopify.dev/docs/apps/tools/cli/configuration
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-[api]
-# API version that your app is using
-api_version = "2024-01"
-# Scopes your app needs
+name = "Theme Sections App"
+client_id = "cf5df4d826a3faea551a29eec40ad090"
+application_url = "https://theme-sections-app-chjk.onrender.com"
+embedded = true
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
 scopes = "read_themes,write_themes,read_files,write_files,read_content,write_content,read_products,write_products,read_script_tags,write_script_tags"
 
 [auth]
-# Redirect URL for auth callback
-redirect_urls = [
-  "https://theme-sections-app-chjk.onrender.com/auth/callback"
-]
+redirect_urls = [ "https://theme-sections-app-chjk.onrender.com/auth/callback" ]
 
 [webhooks]
-# API version to use for webhooks
 api_version = "2024-01"
 
-[app]
-name = "Theme Sections App"
-handle = "theme-sections-app" 
+[pos]
+embedded = false
+
+[build]
+include_config_on_deploy = true
