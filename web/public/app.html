@@ -874,7 +874,21 @@
         }
         
         function loadMySections() {
-            // Simulate fetching my sections from an API
+            // First try to load from localStorage
+            const savedSections = localStorage.getItem('mySections');
+            if (savedSections) {
+                try {
+                    mySections = JSON.parse(savedSections);
+                    console.log('Loaded My Sections from localStorage:', mySections);
+                    renderMySections(mySections);
+                    return;
+                } catch (error) {
+                    console.error('Error parsing saved sections:', error);
+                }
+            }
+            
+            // Fall back to API call if localStorage failed
+            console.log('No saved sections found, fetching from API...');
             fetch('/api/my-sections')
                 .then(response => {
                     if (!response.ok) {
@@ -883,12 +897,14 @@
                     return response.json();
                 })
                 .then(data => {
-                    renderMySections(data);
+                    mySections = data;
+                    saveMySections();
+                    renderMySections(mySections);
                 })
                 .catch(error => {
                     console.error('Error loading my sections:', error);
                     document.getElementById('my-sections-container').innerHTML = 
-                        '<div class="error-state">Error loading sections. Please try again later.</div>';
+                        '<div class="error-state p-5 text-center"><i class="fa-solid fa-exclamation-triangle fa-3x mb-3 text-danger"></i><h3>Error Loading Sections</h3><p>${error.message}</p><button class="btn btn-primary mt-3" onclick="loadMySections()">Try Again</button></div>';
                 });
         }
         
@@ -1146,74 +1162,195 @@
             });
         }
 
-        // Global click handler for all Add to Theme buttons including static ones
+        // Fix the structure of static Add to Theme buttons when the page loads
         document.addEventListener("DOMContentLoaded", function() {
+            // Add CSS directly to handle any static theme dropdowns
+            const fixDropdownsStyle = document.createElement('style');
+            fixDropdownsStyle.textContent = `
+                .btn-add-to-theme {
+                    position: relative;
+                }
+                .theme-dropdown {
+                    position: absolute !important;
+                    top: 100% !important;
+                    left: 0 !important;
+                    width: 100% !important;
+                    z-index: 9999 !important;
+                }
+                .theme-dropdown.show {
+                    display: block !important;
+                    opacity: 1 !important;
+                }
+                .theme-btn-container {
+                    position: relative !important;
+                    width: 100% !important;
+                }
+            `;
+            document.head.appendChild(fixDropdownsStyle);
+            
+            // Process all static Add to Theme buttons to ensure proper structure
+            const staticButtons = Array.from(document.querySelectorAll('.btn-add-to-theme'));
+            console.log('Found static Add to Theme buttons:', staticButtons.length);
+            
+            staticButtons.forEach((button, index) => {
+                // Find section info from context
+                const card = button.closest('.section-card');
+                if (!card) {
+                    console.log('Button not in a section card:', button);
+                    return;
+                }
+                
+                const titleEl = card.querySelector('.section-title');
+                const title = titleEl ? titleEl.textContent.trim() : null;
+                console.log(`Button ${index} title:`, title);
+                
+                // Find the section from globals or create an ID
+                let sectionId = '';
+                
+                // Try to find in mySections
+                const section = title 
+                    ? mySections.find(s => (s.title === title || s.name === title))
+                    : null;
+                
+                if (section) {
+                    sectionId = section.id;
+                    console.log(`Found section ID ${sectionId} for button with title ${title}`);
+                } else {
+                    // Create a fallback ID
+                    sectionId = title 
+                        ? title.toLowerCase().replace(/[^\w]+/g, '-')
+                        : `section-${index}`;
+                    console.log(`Created fallback ID ${sectionId} for button with title ${title}`);
+                }
+                
+                // Set the data attribute
+                button.setAttribute('data-section-id', sectionId);
+                
+                // Ensure button is in a theme-btn-container
+                if (!button.closest('.theme-btn-container')) {
+                    console.log(`Wrapping button for ${sectionId} in theme-btn-container`);
+                    
+                    const container = document.createElement('div');
+                    container.className = 'theme-btn-container';
+                    
+                    // Insert container before button and move button inside
+                    button.parentNode.insertBefore(container, button);
+                    container.appendChild(button);
+                    
+                    // Create a hidden dropdown that will be shown when needed
+                    const dropdown = document.createElement('div');
+                    dropdown.className = 'theme-dropdown';
+                    dropdown.id = `dropdown-my-${sectionId}`;
+                    dropdown.style.cssText = 'position: absolute; width: 100%; z-index: 9999;';
+                    
+                    // Add dropdown content with placeholder
+                    dropdown.innerHTML = `
+                        <div class="theme-dropdown-header">Select Theme</div>
+                        <div class="theme-dropdown-items">
+                            <div class="theme-dropdown-item">Loading themes...</div>
+                        </div>
+                    `;
+                    
+                    // Add to container
+                    container.appendChild(dropdown);
+                }
+            });
+            
             // Handle all Add to Theme button clicks throughout the document
             document.body.addEventListener('click', function(e) {
+                // Debug what was clicked
+                if (e.target.matches('.btn-add-to-theme')) {
+                    console.log('Add to Theme button clicked directly:', e.target);
+                }
+                
                 // Check if clicked element is an Add to Theme button
-                if (e.target && e.target.matches('.btn-add-to-theme, .btn-add-to-theme *')) {
+                if (e.target && (e.target.matches('.btn-add-to-theme') || e.target.closest('.btn-add-to-theme'))) {
                     e.preventDefault();
                     e.stopPropagation();
                     
                     // Get the section ID from the button's data attribute
-                    const button = e.target.closest('.btn-add-to-theme');
+                    const button = e.target.matches('.btn-add-to-theme') ? e.target : e.target.closest('.btn-add-to-theme');
                     if (!button) return;
                     
                     const sectionId = button.getAttribute('data-section-id');
-                    console.log('Add to Theme clicked for section (global handler):', sectionId);
-                    
-                    // Find dropdown element
-                    const dropdown = document.getElementById(`dropdown-my-${sectionId}`);
-                    if (!dropdown) {
-                        console.error('Dropdown not found, creating one');
-                        // Create dropdown on the fly if it doesn't exist
-                        const container = button.closest('.theme-btn-container') || button.parentElement;
+                    if (!sectionId) {
+                        console.error('Button does not have a data-section-id attribute:', button);
                         
-                        if (container) {
-                            const newDropdown = document.createElement('div');
-                            newDropdown.id = `dropdown-my-${sectionId}`;
-                            newDropdown.className = 'theme-dropdown';
-                            
-                            // Create dropdown content
-                            const options = !availableThemes || availableThemes.length === 0 
-                                ? '<div class="theme-dropdown-item">No themes available</div>'
-                                : availableThemes.map(theme => `
-                                    <div class="theme-dropdown-item" data-theme-id="${theme.id}" data-section-id="${sectionId}">
-                                        ${theme.name} ${theme.role === 'main' ? '(Live)' : ''}
-                                    </div>
-                                `).join('');
-                            
-                            newDropdown.innerHTML = `
-                                <div class="theme-dropdown-header">Select Theme</div>
-                                <div class="theme-dropdown-items">
-                                    ${options}
-                                </div>
-                            `;
-                            
-                            // Add the dropdown to the container
-                            container.appendChild(newDropdown);
-                            
-                            // Get the newly created dropdown
-                            const createdDropdown = document.getElementById(`dropdown-my-${sectionId}`);
-                            if (createdDropdown) {
-                                createdDropdown.classList.add('show');
-                                
-                                // Add click handler to dropdown items
-                                createdDropdown.querySelectorAll('.theme-dropdown-item[data-theme-id]').forEach(item => {
-                                    item.addEventListener('click', function(evt) {
-                                        evt.stopPropagation();
-                                        const themeId = this.getAttribute('data-theme-id');
-                                        const secId = this.getAttribute('data-section-id');
-                                        applyTheme(secId, themeId);
-                                    });
-                                });
-                            }
+                        // Try to find the section element and get its ID
+                        const card = button.closest('.section-card');
+                        const title = card?.querySelector('.section-title')?.textContent;
+                        const section = title ? mySections.find(s => s.title === title || s.name === title) : null;
+                        
+                        if (section) {
+                            console.log('Found section by title:', section);
+                            button.setAttribute('data-section-id', section.id);
+                            console.log('Assigned section ID:', section.id);
+                            // Now proceed with the newly set ID
+                        } else {
+                            console.error('Could not determine section ID');
+                            return;
                         }
-                        return;
                     }
                     
-                    // Toggle dropdown visibility
-                    // Close all other dropdowns first
+                    console.log('Add to Theme clicked for section (global handler):', sectionId);
+                    
+                    // Find or create dropdown
+                    let dropdown = document.getElementById(`dropdown-my-${sectionId}`);
+                    
+                    // If dropdown doesn't exist, create it
+                    if (!dropdown) {
+                        console.log('Creating new dropdown for section:', sectionId);
+                        
+                        // Find the container for the dropdown
+                        const container = button.closest('.theme-btn-container') || button.parentElement;
+                        if (!container) {
+                            console.error('Could not find container for dropdown');
+                            return;
+                        }
+                        
+                        // Create a theme-btn-container if needed
+                        let btnContainer = button.closest('.theme-btn-container');
+                        if (!btnContainer) {
+                            console.log('Creating theme-btn-container');
+                            btnContainer = document.createElement('div');
+                            btnContainer.className = 'theme-btn-container';
+                            
+                            // Replace the button with the container
+                            button.parentElement.replaceChild(btnContainer, button);
+                            btnContainer.appendChild(button);
+                        }
+                        
+                        // Create new dropdown
+                        const newDropdown = document.createElement('div');
+                        newDropdown.id = `dropdown-my-${sectionId}`;
+                        newDropdown.className = 'theme-dropdown';
+                        newDropdown.style.cssText = 'position: absolute; width: 100%; z-index: 9999;';
+                        
+                        // Create dropdown content
+                        const options = !availableThemes || availableThemes.length === 0 
+                            ? '<div class="theme-dropdown-item">No themes available</div>'
+                            : availableThemes.map(theme => `
+                                <div class="theme-dropdown-item" data-theme-id="${theme.id}" data-section-id="${sectionId}">
+                                    ${theme.name} ${theme.role === 'main' ? '(Live)' : ''}
+                                </div>
+                            `).join('');
+                        
+                        newDropdown.innerHTML = `
+                            <div class="theme-dropdown-header">Select Theme</div>
+                            <div class="theme-dropdown-items">
+                                ${options}
+                            </div>
+                        `;
+                        
+                        // Add the dropdown to the container
+                        btnContainer.appendChild(newDropdown);
+                        dropdown = newDropdown;
+                        
+                        console.log('Created dropdown:', dropdown);
+                    }
+                    
+                    // Now show the dropdown
+                    // First close all other dropdowns
                     document.querySelectorAll('.theme-dropdown.show').forEach(el => {
                         if (el.id !== dropdown.id) {
                             el.classList.remove('show');
@@ -1222,7 +1359,12 @@
                     
                     // Toggle current dropdown
                     dropdown.classList.toggle('show');
-                    console.log('Toggled dropdown, show class is now:', dropdown.classList.contains('show'));
+                    console.log('Dropdown visibility:', dropdown.classList.contains('show'));
+                    
+                    // Make dropdown visible by force if needed
+                    if (dropdown.classList.contains('show')) {
+                        dropdown.style.display = 'block';
+                    }
                 }
                 
                 // Handle theme dropdown item clicks
