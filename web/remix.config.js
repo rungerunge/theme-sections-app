@@ -11,6 +11,7 @@ module.exports = {
     return defineRoutes(route => {
       // Ensure admin routes are properly registered
       route("/admin", "routes/admin.tsx", () => {
+        route("", "routes/admin._index.tsx");
         route("/sections", "routes/admin.sections.tsx");
         route("/upload", "routes/admin.upload.tsx");
       });
