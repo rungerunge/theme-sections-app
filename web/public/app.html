@@ -313,14 +313,6 @@
         <div class="header">
             <div class="d-flex justify-content-between align-items-center">
                 <h1><i class="fa-solid fa-cube me-2"></i> Section Store</h1>
-                <div class="d-flex align-items-center">
-                    <select id="theme-dropdown" class="form-select me-2">
-                        <option value="" selected>Select Theme...</option>
-                    </select>
-                    <button class="btn btn-primary select-theme-btn">
-                        <i class="fa-solid fa-check me-1"></i> Use Theme
-                    </button>
-                </div>
             </div>
         </div>
 
@@ -679,23 +671,7 @@
                               '<span class="section-tag">general</span>'}
                         </div>
                         <div class="section-actions">
-                            <button class="btn-add-section mb-2" onclick="addToMySections(${JSON.stringify(section).replace(/"/g, '&quot;')})">Add to My Sections</button>
-                            <div class="theme-btn-container">
-                                <button class="btn-add-to-theme" data-section-id="${section.id}">Add to Theme</button>
-                                <div class="theme-dropdown" id="dropdown-${section.id}">
-                                    <div class="theme-dropdown-header">Select Theme</div>
-                                    <div class="theme-dropdown-items">
-                                        ${!availableThemes || availableThemes.length === 0 
-                                          ? '<div class="theme-dropdown-item">No themes available</div>'
-                                          : availableThemes.map(theme => `
-                                              <div class="theme-dropdown-item" data-theme-id="${theme.id}" data-section-id="${section.id}">
-                                                ${theme.name} ${theme.role === 'main' ? '(Live)' : ''}
-                                              </div>
-                                            `).join('')
-                                        }
-                                    </div>
-                                </div>
-                            </div>
+                            <button class="btn-add-section" onclick="addToMySections(${JSON.stringify(section).replace(/"/g, '&quot;')})">Add to My Sections</button>
                         </div>
                     </div>
                 `;
@@ -705,43 +681,6 @@
             });
             
             sectionsContainer.appendChild(sectionGrid);
-
-            // Add event listeners for dropdown toggle
-            document.querySelectorAll('.btn-add-to-theme').forEach(button => {
-                button.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    const sectionId = this.getAttribute('data-section-id');
-                    const dropdown = document.getElementById(`dropdown-${sectionId}`);
-                    
-                    // Close all other dropdowns first
-                    document.querySelectorAll('.theme-dropdown.show').forEach(el => {
-                        if (el.id !== `dropdown-${sectionId}`) {
-                            el.classList.remove('show');
-                        }
-                    });
-                    
-                    // Toggle current dropdown
-                    dropdown.classList.toggle('show');
-                });
-            });
-            
-            // Add event listeners for theme selection
-            document.querySelectorAll('.theme-dropdown-item[data-theme-id]').forEach(item => {
-                item.addEventListener('click', function(e) {
-                    const themeId = this.getAttribute('data-theme-id');
-                    const sectionId = this.getAttribute('data-section-id');
-                    applyTheme(sectionId, themeId);
-                });
-            });
-
-            // Close dropdowns when clicking outside
-            document.addEventListener('click', function(e) {
-                if (!e.target.closest('.theme-btn-container')) {
-                    document.querySelectorAll('.theme-dropdown.show').forEach(dropdown => {
-                        dropdown.classList.remove('show');
-                    });
-                }
-            });
         }
         
         function loadSections() {
@@ -847,12 +786,12 @@
             
             mySectionsContainer.appendChild(sectionGrid);
 
-            // Add event listeners for dropdown toggle
+            // Add event listeners for theme dropdown toggle
             document.querySelectorAll('.btn-add-to-theme').forEach(button => {
                 button.addEventListener('click', function(e) {
                     e.stopPropagation();
                     const sectionId = this.getAttribute('data-section-id');
-                    const dropdown = document.getElementById(`dropdown-my-${sectionId}`) || document.getElementById(`dropdown-${sectionId}`);
+                    const dropdown = document.getElementById(`dropdown-my-${sectionId}`);
                     
                     if (!dropdown) return;
                     
@@ -875,6 +814,15 @@
                     const sectionId = this.getAttribute('data-section-id');
                     applyTheme(sectionId, themeId);
                 });
+            });
+
+            // Close dropdowns when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.theme-btn-container')) {
+                    document.querySelectorAll('.theme-dropdown.show').forEach(dropdown => {
+                        dropdown.classList.remove('show');
+                    });
+                }
             });
         }
         
@@ -968,7 +916,7 @@
             // Handle theme selection
             if (event.target.classList.contains('theme-dropdown-item')) {
                 const themeId = event.target.getAttribute('data-theme-id');
-                const sectionId = event.target.closest('.theme-btn-container').querySelector('.btn-add-to-theme').getAttribute('data-section-id');
+                const sectionId = event.target.getAttribute('data-section-id');
                 
                 // Show loading state
                 const button = document.querySelector(`button.btn-add-to-theme[data-section-id="${sectionId}"]`);
@@ -977,7 +925,8 @@
                 button.disabled = true;
                 
                 // Hide dropdown
-                document.getElementById(`dropdown-${sectionId}`).classList.remove('show');
+                const dropdown = event.target.closest('.theme-dropdown');
+                dropdown.classList.remove('show');
                 
                 // Send request to add section
                 fetch('/api/sections/install', {
