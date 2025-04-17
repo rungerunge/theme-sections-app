@@ -242,6 +242,102 @@ app.get('/api/themes', async (req, res) => {
   }
 });
 
+// API endpoint for fetching available sections
+app.get('/api/sections', (req, res) => {
+  try {
+    logMessage('Received request to /api/sections');
+    
+    // Get the list of sections from the sections directory
+    const sectionsDir = path.join(process.cwd(), 'sections');
+    const sections = [];
+    
+    if (fs.existsSync(sectionsDir)) {
+      const sectionDirs = fs.readdirSync(sectionsDir);
+      
+      for (const sectionDir of sectionDirs) {
+        // Skip hidden directories or files
+        if (sectionDir.startsWith('.')) continue;
+        
+        const sectionPath = path.join(sectionsDir, sectionDir);
+        const sectionStats = fs.statSync(sectionPath);
+        
+        // Skip if not a directory
+        if (!sectionStats.isDirectory()) continue;
+        
+        // Check if section.liquid exists
+        const sectionFilePath = path.join(sectionPath, 'section.liquid');
+        if (!fs.existsSync(sectionFilePath)) continue;
+        
+        // Get preview image if it exists
+        let previewUrl = null;
+        const previewPngPath = path.join(sectionPath, 'preview.png');
+        const previewJpgPath = path.join(sectionPath, 'preview.jpg');
+        const previewSvgPath = path.join(sectionPath, 'preview.svg');
+        
+        if (fs.existsSync(previewPngPath)) {
+          previewUrl = `/section-previews/${sectionDir}/preview.png`;
+        } else if (fs.existsSync(previewJpgPath)) {
+          previewUrl = `/section-previews/${sectionDir}/preview.jpg`;
+        } else if (fs.existsSync(previewSvgPath)) {
+          previewUrl = `/section-previews/${sectionDir}/preview.svg`;
+        } else {
+          // Use a default preview image
+          previewUrl = '/section-previews/default.png';
+        }
+        
+        // Try to get metadata from a meta.json file if it exists
+        let metadata = {};
+        const metaFilePath = path.join(sectionPath, 'meta.json');
+        if (fs.existsSync(metaFilePath)) {
+          try {
+            const metaContent = fs.readFileSync(metaFilePath, 'utf8');
+            metadata = JSON.parse(metaContent);
+          } catch (error) {
+            logMessage(`Error parsing metadata for section ${sectionDir}: ${error.message}`, true);
+          }
+        }
+        
+        // Add the section to the list
+        sections.push({
+          id: sectionDir,
+          title: metadata.title || sectionDir,
+          description: metadata.description || `A ${sectionDir} section for your store`,
+          previewUrl: previewUrl,
+          price: metadata.price || 'Free',
+          categories: metadata.categories || ['general']
+        });
+      }
+    }
+    
+    // Return the list of sections
+    logMessage(`Found ${sections.length} sections: ${sections.map(s => s.id).join(', ')}`);
+    return res.status(200).json(sections);
+    
+  } catch (error) {
+    logMessage(`Error fetching sections: ${error.message}`, true);
+    return res.status(500).json({
+      error: 'Server error',
+      message: error.message
+    });
+  }
+});
+
+// API endpoint for fetching user's stored sections
+app.get('/api/my-sections', (req, res) => {
+  // This would normally fetch from a database
+  // For now we'll return a sample list
+  try {
+    logMessage('Received request to /api/my-sections');
+    return res.status(200).json([]);
+  } catch (error) {
+    logMessage(`Error fetching my sections: ${error.message}`, true);
+    return res.status(500).json({
+      error: 'Server error',
+      message: error.message
+    });
+  }
+});
+
 // API endpoint for section installation
 app.post('/api/sections/install', async (req, res) => {
   try {
@@ -403,6 +499,103 @@ app.post('/api/sections/install', async (req, res) => {
     logMessage('Error in section install endpoint: ' + error.message, true);
     logMessage(error.stack || 'No stack trace available', true);
     
+    return res.status(500).json({ 
+      error: 'Server error', 
+      message: error.message 
+    });
+  }
+});
+
+// API endpoint for applying a section to a theme
+app.post('/api/apply-section', async (req, res) => {
+  try {
+    logMessage('Received request to /api/apply-section with body: ' + JSON.stringify(req.body));
+    const { sectionId, themeId } = req.body;
+    
+    if (!sectionId) {
+      return res.status(400).json({ error: 'Section ID is required' });
+    }
+    
+    if (!themeId) {
+      return res.status(400).json({ error: 'Theme ID is required' });
+    }
+    
+    // For now, forward to the existing install endpoint
+    // This is a workaround until we can update the frontend to use the proper endpoint
+    const shop = req.query.shop || 'okayscaledemo.myshopify.com'; // Use a default shop or query param
+    
+    // Call the install endpoint directly
+    try {
+      // Read the section file
+      const sectionPath = path.join(process.cwd(), 'sections', sectionId, 'section.liquid');
+      let sectionContent = null;
+      
+      if (fs.existsSync(sectionPath)) {
+        sectionContent = fs.readFileSync(sectionPath, 'utf8');
+      } else {
+        return res.status(404).json({
+          error: 'Section not found',
+          message: `Could not find section ${sectionId}`
+        });
+      }
+      
+      // Get the access token
+      const accessToken = PRIVATE_APP_TOKENS[shop];
+      if (!accessToken) {
+        return res.status(401).json({
+          error: 'Unauthorized',
+          message: 'No access token found for shop'
+        });
+      }
+      
+      // Get theme name
+      let themeName = "Selected Theme";
+      try {
+        const themeResponse = await axios.get(`https://${shop}/admin/api/2024-01/themes/${themeId}.json`, {
+          headers: {
+            'X-Shopify-Access-Token': accessToken,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        themeName = themeResponse.data.theme.name;
+      } catch (error) {
+        logMessage(`Could not get theme name: ${error.message}`, true);
+      }
+      
+      // Add section to theme
+      const assetResponse = await axios.put(
+        `https://${shop}/admin/api/2024-01/themes/${themeId}/assets.json`,
+        {
+          asset: {
+            key: `sections/${sectionId}.liquid`,
+            value: sectionContent
+          }
+        },
+        {
+          headers: {
+            'X-Shopify-Access-Token': accessToken,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Section applied to theme',
+        themeId,
+        themeName,
+        sectionId
+      });
+    } catch (error) {
+      logMessage(`Error applying section: ${error.message}`, true);
+      return res.status(500).json({
+        error: 'Error applying section',
+        message: error.message
+      });
+    }
+  } catch (error) {
+    logMessage('Error in apply section endpoint: ' + error.message, true);
     return res.status(500).json({ 
       error: 'Server error', 
       message: error.message 
