@@ -961,16 +961,20 @@
             // Disable button during request
             button.disabled = true;
             
-            console.log(`Adding section ${sectionId} to theme ${themeId}`);
+            // Get shop parameter from URL or use default
+            const shop = new URLSearchParams(window.location.search).get('shop') || localStorage.getItem('shopDomain') || '';
             
-            fetch('/api/sections/install', {
+            console.log(`Adding section ${sectionId} to theme ${themeId} for shop ${shop}`);
+            
+            fetch('/api/sections/install?shop=' + encodeURIComponent(shop), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
                     sectionId: sectionId,
-                    themeId: themeId
+                    themeId: themeId,
+                    shop: shop // Include shop in request body as well
                 })
             })
             .then(response => {
@@ -1080,7 +1084,11 @@
             try {
                 console.log('Fetching themes...');
                 
-                const shop = new URLSearchParams(window.location.search).get('shop') || 'okayscaledemo.myshopify.com';
+                const shop = new URLSearchParams(window.location.search).get('shop') || localStorage.getItem('shopDomain') || 'okayscaledemo.myshopify.com';
+                
+                // Store shop domain for future use
+                localStorage.setItem('shopDomain', shop);
+                
                 console.log('Fetching themes for shop:', shop);
                 
                 const response = await fetch(`/api/themes?shop=${shop}`);
@@ -1203,6 +1211,16 @@
                 }
             `;
             document.head.appendChild(fixDropdownsStyle);
+            
+            // Save shop parameter from URL if available
+            const urlParams = new URLSearchParams(window.location.search);
+            const shopParam = urlParams.get('shop');
+            if (shopParam) {
+                localStorage.setItem('shopDomain', shopParam);
+                console.log('Saved shop domain from URL:', shopParam);
+            } else {
+                console.log('Using previously saved shop domain:', localStorage.getItem('shopDomain'));
+            }
             
             // Load themes first
             fetchThemes().then(() => {
