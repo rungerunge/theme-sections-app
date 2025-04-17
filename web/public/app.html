@@ -21,12 +21,12 @@
         .section-card {
             border: 1px solid #e5e7eb;
             border-radius: 8px;
-            overflow: hidden;
             transition: all 0.2s ease;
             margin-bottom: 20px;
             background-color: #fff;
             height: 100%;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            overflow: visible !important;
         }
         .section-card:hover {
             transform: translateY(-4px);
@@ -44,6 +44,7 @@
             display: flex;
             flex-direction: column;
             height: calc(100% - 180px);
+            overflow: visible !important;
         }
         .section-title {
             font-size: 16px;
@@ -64,6 +65,7 @@
         }
         .section-actions {
             margin-top: auto;
+            overflow: visible !important;
         }
         .section-description {
             font-size: 14px;
@@ -252,29 +254,33 @@
             padding: 3px 8px;
             border-radius: 4px;
         }
-        /* Improved styling for theme dropdown */
+        .theme-btn-container {
+            position: relative;
+            width: 100%;
+            margin-top: 8px;
+            overflow: visible !important;
+        }
         .theme-dropdown {
             position: absolute;
-            width: 100%;
-            left: 0;
+            top: -210px;
+            right: 0;
             background-color: white;
             border-radius: 4px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.25);
-            z-index: 9999; /* Extremely high z-index to ensure visibility */
-            max-height: 250px;
+            z-index: 1000;
+            max-height: 200px;
             overflow-y: auto;
             display: none;
-            top: 100%;
-            margin-top: 4px;
-            transition: all 0.2s ease;
+            margin-top: 5px;
+            transition: opacity 0.2s;
             opacity: 0;
             border: 1px solid #e5e7eb;
             pointer-events: none;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
         }
-        .theme-dropdown.show {
-            display: block !important; /* Force display with !important */
+        .theme-dropdown.visible {
+            display: block;
             opacity: 1;
-            pointer-events: all;
+            pointer-events: auto;
         }
         .theme-dropdown-header {
             padding: 12px 16px;
@@ -300,10 +306,9 @@
             background-color: #f3f4f6;
             color: #4f46e5;
         }
-        .theme-btn-container {
-            position: relative;
-            width: 100%;
-            margin-top: 8px;
+        .theme-dropdown-fix {
+            position: fixed;
+            z-index: 10000 !important;
         }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
