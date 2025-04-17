@@ -974,12 +974,14 @@
                 })
             })
             .then(response => {
-                if (!response.ok) {
-                    return response.json().then(errorData => {
-                        throw new Error(errorData.message || 'Failed to add section to theme');
-                    });
-                }
-                return response.json();
+                console.log('Install response status:', response.status);
+                return response.json().then(data => {
+                    if (!response.ok) {
+                        console.error('Error response from server:', data);
+                        throw new Error(data.error || 'Failed to add section to theme');
+                    }
+                    return data;
+                });
             })
             .then(data => {
                 console.log('Section added successfully:', data);
@@ -999,7 +1001,7 @@
             .catch(error => {
                 console.error('Error adding section to theme:', error);
                 statusContainer.className = 'status-indicator status-error';
-                statusContainer.textContent = `Error: ${error.message}`;
+                statusContainer.textContent = `Error: ${error.message || 'Failed to connect to server'}`;
                 
                 // Re-enable button after error
                 setTimeout(() => {

@@ -29,48 +29,73 @@ interface SettingsResponse {
 }
 
 export const action: ActionFunction = async ({ request }) => {
-  const { admin } = await authenticate.admin(request);
-  const { sectionId, themeId } = await request.json() as RequestBody;
-
-  if (!sectionId) {
-    return json({ error: "Section ID is required" }, { status: 400 });
-  }
-
-  if (!themeId) {
-    return json({ error: "Theme ID is required" }, { status: 400 });
-  }
-
   try {
+    const { admin } = await authenticate.admin(request);
+    const { sectionId, themeId } = await request.json() as RequestBody;
+
+    if (!sectionId) {
+      return json({ error: "Section ID is required" }, { status: 400 });
+    }
+
+    if (!themeId) {
+      return json({ error: "Theme ID is required" }, { status: 400 });
+    }
+
     // Determine the sections directory path
     // First try relative to web directory
     let sectionsDir = path.join(process.cwd(), '..', 'sections');
     let sectionPath = path.join(sectionsDir, sectionId, 'section.liquid');
     
+    // Keep track of all paths tried for debugging
+    const triedPaths = [sectionPath];
+    
     // Check if path exists, if not try alternate paths
     try {
       await fs.access(sectionPath);
+      console.log(`Found section at: ${sectionPath}`);
     } catch (e) {
       // Try direct path from root
       sectionsDir = path.join(process.cwd(), 'sections');
       sectionPath = path.join(sectionsDir, sectionId, 'section.liquid');
+      triedPaths.push(sectionPath);
       
       try {
         await fs.access(sectionPath);
+        console.log(`Found section at: ${sectionPath}`);
       } catch (e) {
         // One more attempt with public directory
         sectionsDir = path.join(process.cwd(), 'public', 'sections');
         sectionPath = path.join(sectionsDir, sectionId, 'section.liquid');
+        triedPaths.push(sectionPath);
+        
+        try {
+          await fs.access(sectionPath);
+          console.log(`Found section at: ${sectionPath}`);
+        } catch (e) {
+          console.error(`Section file not found after trying paths: ${triedPaths.join(', ')}`);
+          return json({ 
+            error: "Section file not found", 
+            details: {
+              sectionId,
+              triedPaths
+            }
+          }, { status: 404 });
+        }
       }
     }
 
-    console.log(`Looking for section at: ${sectionPath}`);
+    console.log(`Using section file at: ${sectionPath}`);
     
     let sectionContent;
     try {
       sectionContent = await fs.readFile(sectionPath, 'utf8');
+      console.log(`Read section content (${sectionContent.length} bytes)`);
     } catch (err) {
       console.error(`Error reading section file: ${err}`);
-      return json({ error: "Section file not found" }, { status: 404 });
+      return json({ 
+        error: "Failed to read section file",
+        details: { path: sectionPath, message: (err as Error).message }
+      }, { status: 500 });
     }
 
     // Check for additional assets (CSS, JS)
@@ -80,8 +105,10 @@ export const action: ActionFunction = async ({ request }) => {
 
     // Add section to theme
     try {
+      console.log(`Adding section to theme ${themeId}`);
+      
       // Add main section file
-      await admin.rest.put({
+      const sectionResponse = await admin.rest.put({
         path: `themes/${themeId}/assets`,
         data: {
           asset: {
@@ -90,6 +117,8 @@ export const action: ActionFunction = async ({ request }) => {
           }
         }
       });
+      
+      console.log(`Section file added successfully: ${sectionResponse.status}`);
 
       // Add CSS if exists
       try {
@@ -103,6 +132,7 @@ export const action: ActionFunction = async ({ request }) => {
             }
           }
         });
+        console.log('CSS file added successfully');
       } catch (err) {
         console.log('No CSS file found for section, skipping...');
       }
@@ -119,6 +149,7 @@ export const action: ActionFunction = async ({ request }) => {
             }
           }
         });
+        console.log('JS file added successfully');
       } catch (err) {
         console.log('No JS file found for section, skipping...');
       }
@@ -149,6 +180,7 @@ export const action: ActionFunction = async ({ request }) => {
                 }
               }
             });
+            console.log('Schema file added successfully');
           }
         }
       } catch (err) {
@@ -157,17 +189,28 @@ export const action: ActionFunction = async ({ request }) => {
 
       return json({ 
         success: true, 
-        message: "Section installed successfully" 
+        message: "Section installed successfully",
+        sectionId,
+        themeId
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error installing section:", error);
       return json({ 
-        error: "Failed to install section" 
+        error: "Failed to install section", 
+        details: {
+          message: error.message,
+          status: error.status,
+          sectionId,
+          themeId
+        }
       }, { status: 500 });
     }
   } catch (error: any) {
-    console.error('Error installing section:', error);
-    return json({ error: error.message }, { status: 500 });
+    console.error('Error processing request:', error);
+    return json({ 
+      error: error.message || "An unexpected error occurred",
+      details: { trace: error.stack }
+    }, { status: 500 });
   }
 };
 

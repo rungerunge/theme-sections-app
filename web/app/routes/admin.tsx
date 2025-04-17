@@ -5,7 +5,7 @@ import { useLoaderData } from '@remix-run/react';
 
 // This is a simple in-memory auth check - in production, you'd use a more secure method
 // like storing a secure session token in a cookie with proper encryption
-const ADMIN_PASSWORD = "your-secure-password"; // Change this to your own secure password
+const ADMIN_PASSWORD = "okayscale"; // Use a strong password in production
 
 // Check if the user is authenticated
 export const loader: LoaderFunction = async ({ request }) => {

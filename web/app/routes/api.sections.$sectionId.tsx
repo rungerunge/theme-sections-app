@@ -4,7 +4,7 @@ import path from 'path';
 import { authenticate } from "../shopify.server";
 
 // Simple in-memory auth check - must match the admin dashboard password
-const ADMIN_PASSWORD = "your-secure-password"; // Change this to match admin.tsx
+const ADMIN_PASSWORD = "okayscale"; // Change this to match admin.tsx
 
 export const action: ActionFunction = async ({ request, params }) => {
   const sectionId = params.sectionId;
