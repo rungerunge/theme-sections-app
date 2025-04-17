@@ -376,7 +376,7 @@
         const categoryItems = document.querySelectorAll('.category-item');
         
         // Sections Data (hardcoded for now, this would normally come from an API)
-        const sections = [
+        let sections = [
             {
                 id: 'testimonial-8',
                 title: 'Testimonial #8',
@@ -594,67 +594,112 @@
         
         function renderExploreSections(sectionsData) {
             const sectionsContainer = document.getElementById('explore-sections');
+            
+            if (loadingElement) {
+                loadingElement.style.display = 'none';
+            }
+            
             sectionsContainer.innerHTML = '';
 
-            if (!sectionsData || sectionsData.length === 0) {
-                sectionsContainer.innerHTML = '<div class="empty-state">No sections available in the library</div>';
+            if (!sectionsData || !Array.isArray(sectionsData) || sectionsData.length === 0) {
+                sectionsContainer.innerHTML = '<div class="empty-state p-5 text-center">No sections available in the library</div>';
                 return;
             }
 
+            const sectionGrid = document.createElement('div');
+            sectionGrid.className = 'row';
+            
             sectionsData.forEach(section => {
+                const sectionCol = document.createElement('div');
+                sectionCol.className = 'col-lg-4 col-md-6 mb-4';
+                
                 const sectionCard = document.createElement('div');
                 sectionCard.className = 'section-card';
+                
+                // Get title and preview URL, with fallbacks
+                const title = section.title || section.name || 'Unnamed Section';
+                const previewUrl = section.previewUrl || '/section-preview/' + section.id;
+                
                 sectionCard.innerHTML = `
-                    <div class="section-card-header">
-                        <h3>${section.name || section.title}</h3>
-                        <button class="btn-add" onclick="addToMySections('${section.id}')">Add</button>
-                    </div>
-                    <p>${section.description}</p>
-                    <div class="theme-dropdown">
-                        <button class="theme-dropdown-btn">Select Theme</button>
-                        <div class="theme-dropdown-content">
-                            ${!availableThemes || availableThemes.length === 0 
-                              ? '<div class="theme-dropdown-item">No themes available</div>'
-                              : availableThemes.map(theme => `
-                                  <div class="theme-dropdown-item" data-theme-id="${theme.id}" onclick="applyTheme('${section.id}', '${theme.id}')">${theme.name} ${theme.role === 'main' ? '(Live)' : ''}</div>
-                                `).join('')
-                            }
+                    <div class="section-preview" style="background-image: url('${previewUrl}')"></div>
+                    <div class="section-info">
+                        <h3 class="section-title">${title}</h3>
+                        <p>${section.description || ''}</p>
+                        <div class="section-tags mb-3">
+                            ${Array.isArray(section.categories) ? 
+                              section.categories.map(cat => `<span class="section-tag">${cat}</span>`).join('') : 
+                              '<span class="section-tag">general</span>'}
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <button class="btn-add-section" onclick="addToMySections(${JSON.stringify(section).replace(/"/g, '&quot;')})">Add to My Sections</button>
+                        </div>
+                        <div class="theme-btn-container">
+                            <button class="btn-add-to-theme" data-section-id="${section.id}">Add to Theme</button>
+                            <div class="theme-dropdown" id="dropdown-${section.id}">
+                                <div class="theme-dropdown-header">Select Theme</div>
+                                <div class="theme-dropdown-items">
+                                    ${!availableThemes || availableThemes.length === 0 
+                                      ? '<div class="theme-dropdown-item">No themes available</div>'
+                                      : availableThemes.map(theme => `
+                                          <div class="theme-dropdown-item" data-theme-id="${theme.id}" data-section-id="${section.id}">
+                                            ${theme.name} ${theme.role === 'main' ? '(Live)' : ''}
+                                          </div>
+                                        `).join('')
+                                    }
+                                </div>
+                            </div>
                         </div>
                     </div>
                 `;
-                sectionsContainer.appendChild(sectionCard);
+                
+                sectionCol.appendChild(sectionCard);
+                sectionGrid.appendChild(sectionCol);
             });
+            
+            sectionsContainer.appendChild(sectionGrid);
 
             // Add event listeners for dropdown toggle
-            document.querySelectorAll('.theme-dropdown-btn').forEach(button => {
+            document.querySelectorAll('.btn-add-to-theme').forEach(button => {
                 button.addEventListener('click', function(e) {
                     e.stopPropagation();
-                    const dropdownContent = this.nextElementSibling;
+                    const sectionId = this.getAttribute('data-section-id');
+                    const dropdown = document.getElementById(`dropdown-${sectionId}`);
                     
                     // Close all other dropdowns first
-                    document.querySelectorAll('.theme-dropdown-content.active').forEach(content => {
-                        if (content !== dropdownContent) {
-                            content.classList.remove('active');
+                    document.querySelectorAll('.theme-dropdown.show').forEach(el => {
+                        if (el.id !== `dropdown-${sectionId}`) {
+                            el.classList.remove('show');
                         }
                     });
                     
                     // Toggle current dropdown
-                    dropdownContent.classList.toggle('active');
+                    dropdown.classList.toggle('show');
+                });
+            });
+            
+            // Add event listeners for theme selection
+            document.querySelectorAll('.theme-dropdown-item[data-theme-id]').forEach(item => {
+                item.addEventListener('click', function(e) {
+                    const themeId = this.getAttribute('data-theme-id');
+                    const sectionId = this.getAttribute('data-section-id');
+                    applyTheme(sectionId, themeId);
                 });
             });
 
             // Close dropdowns when clicking outside
-            document.addEventListener('click', function() {
-                document.querySelectorAll('.theme-dropdown-content.active').forEach(dropdown => {
-                    dropdown.classList.remove('active');
-                });
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.theme-btn-container')) {
+                    document.querySelectorAll('.theme-dropdown.show').forEach(dropdown => {
+                        dropdown.classList.remove('show');
+                    });
+                }
             });
         }
         
         function loadSections() {
             // Show loading state
-            document.getElementById('explore-sections').innerHTML = 
-                '<div class="loading-state">Loading sections library...</div>';
+            const sectionsContainer = document.getElementById('explore-sections');
+            sectionsContainer.innerHTML = '<div class="loading text-center p-5"><div class="spinner-border text-primary mb-3" role="status"><span class="visually-hidden">Loading...</span></div><p>Loading sections library...</p></div>';
             
             // Fetch sections from API
             console.log('Fetching sections from API...');
@@ -673,8 +718,8 @@
                     console.log('Sections data received:', data);
                     if (!data || !Array.isArray(data) || data.length === 0) {
                         console.warn('No sections returned from API');
-                        document.getElementById('explore-sections').innerHTML = 
-                            '<div class="empty-state">No sections available. Please add section folders to your app.</div>';
+                        sectionsContainer.innerHTML = 
+                            '<div class="empty-state p-5 text-center"><i class="fa-solid fa-exclamation-circle fa-3x mb-3 text-warning"></i><h3>No Sections Available</h3><p>No sections were found in the library. Please add section folders to your app.</p></div>';
                         return;
                     }
                     
@@ -686,8 +731,8 @@
                 })
                 .catch(error => {
                     console.error('Error loading sections:', error);
-                    document.getElementById('explore-sections').innerHTML = 
-                        `<div class="error-state">Error loading sections: ${error.message}. Please try again later.</div>`;
+                    sectionsContainer.innerHTML = 
+                        `<div class="error-state p-5 text-center"><i class="fa-solid fa-exclamation-triangle fa-3x mb-3 text-danger"></i><h3>Error Loading Sections</h3><p>${error.message}</p><button class="btn btn-primary mt-3" onclick="loadSections()">Try Again</button></div>`;
                 });
         }
         
@@ -762,17 +807,31 @@
                 });
         }
         
-        function addToMySections(section) {
+        function addToMySections(sectionData) {
+            console.log('Adding to My Sections:', sectionData);
+            
+            // If we received a string, find the section in the global sections array
+            let section;
+            if (typeof sectionData === 'string') {
+                section = sections.find(s => s.id === sectionData);
+                if (!section) {
+                    showNotification(`Section ID ${sectionData} not found`, 'error');
+                    return;
+                }
+            } else {
+                section = sectionData;
+            }
+            
             // Check if already in My Sections
             if (mySections.some(s => s.id === section.id)) {
-                showNotification(`${section.title} is already in your sections`, 'error');
+                showNotification(`${section.title || section.name} is already in your sections`, 'error');
                 return;
             }
             
             // Add to My Sections
             mySections.push(section);
             saveMySections();
-            showNotification(`Added ${section.title} to My Sections`, 'success');
+            showNotification(`Added ${section.title || section.name} to My Sections`, 'success');
             
             // Switch to My Sections tab
             setActiveTab('my-sections');
@@ -934,16 +993,28 @@
                 themeDropdown.innerHTML = '<option value="">Loading themes...</option>';
                 themeDropdown.disabled = true;
                 
-                const response = await fetch('/api/themes');
+                const shop = new URLSearchParams(window.location.search).get('shop') || 'okayscaledemo.myshopify.com';
+                console.log('Fetching themes for shop:', shop);
+                
+                const response = await fetch(`/api/themes?shop=${shop}`);
                 if (!response.ok) {
                     throw new Error(`Failed to fetch themes: ${response.status}`);
                 }
                 const data = await response.json();
-                availableThemes = data.themes || data;
+                console.log('Theme response data:', data);
+                
+                if (data.success && data.themes) {
+                    availableThemes = data.themes;
+                } else if (Array.isArray(data)) {
+                    availableThemes = data;
+                } else {
+                    console.warn('Unexpected themes data format:', data);
+                    availableThemes = [];
+                }
                 
                 // Update dropdown after themes are loaded
                 populateThemeDropdown(availableThemes);
-                console.log('Fetched themes:', availableThemes);
+                console.log('Processed themes:', availableThemes);
                 return availableThemes;
             } catch (error) {
                 console.error('Error fetching themes:', error);
