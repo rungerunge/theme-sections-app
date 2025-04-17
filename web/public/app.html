@@ -259,20 +259,20 @@
             left: 0;
             background-color: white;
             border-radius: 4px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            z-index: 1000;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.25);
+            z-index: 9999; /* Extremely high z-index to ensure visibility */
             max-height: 250px;
             overflow-y: auto;
             display: none;
             top: 100%;
             margin-top: 4px;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
             opacity: 0;
             border: 1px solid #e5e7eb;
             pointer-events: none;
         }
         .theme-dropdown.show {
-            display: block;
+            display: block !important; /* Force display with !important */
             opacity: 1;
             pointer-events: all;
         }
@@ -1145,6 +1145,97 @@
                 dropdown.classList.remove('show');
             });
         }
+
+        // Global click handler for all Add to Theme buttons including static ones
+        document.addEventListener("DOMContentLoaded", function() {
+            // Handle all Add to Theme button clicks throughout the document
+            document.body.addEventListener('click', function(e) {
+                // Check if clicked element is an Add to Theme button
+                if (e.target && e.target.matches('.btn-add-to-theme, .btn-add-to-theme *')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Get the section ID from the button's data attribute
+                    const button = e.target.closest('.btn-add-to-theme');
+                    if (!button) return;
+                    
+                    const sectionId = button.getAttribute('data-section-id');
+                    console.log('Add to Theme clicked for section (global handler):', sectionId);
+                    
+                    // Find dropdown element
+                    const dropdown = document.getElementById(`dropdown-my-${sectionId}`);
+                    if (!dropdown) {
+                        console.error('Dropdown not found, creating one');
+                        // Create dropdown on the fly if it doesn't exist
+                        const container = button.closest('.theme-btn-container') || button.parentElement;
+                        
+                        if (container) {
+                            const newDropdown = document.createElement('div');
+                            newDropdown.id = `dropdown-my-${sectionId}`;
+                            newDropdown.className = 'theme-dropdown';
+                            
+                            // Create dropdown content
+                            const options = !availableThemes || availableThemes.length === 0 
+                                ? '<div class="theme-dropdown-item">No themes available</div>'
+                                : availableThemes.map(theme => `
+                                    <div class="theme-dropdown-item" data-theme-id="${theme.id}" data-section-id="${sectionId}">
+                                        ${theme.name} ${theme.role === 'main' ? '(Live)' : ''}
+                                    </div>
+                                `).join('');
+                            
+                            newDropdown.innerHTML = `
+                                <div class="theme-dropdown-header">Select Theme</div>
+                                <div class="theme-dropdown-items">
+                                    ${options}
+                                </div>
+                            `;
+                            
+                            // Add the dropdown to the container
+                            container.appendChild(newDropdown);
+                            
+                            // Get the newly created dropdown
+                            const createdDropdown = document.getElementById(`dropdown-my-${sectionId}`);
+                            if (createdDropdown) {
+                                createdDropdown.classList.add('show');
+                                
+                                // Add click handler to dropdown items
+                                createdDropdown.querySelectorAll('.theme-dropdown-item[data-theme-id]').forEach(item => {
+                                    item.addEventListener('click', function(evt) {
+                                        evt.stopPropagation();
+                                        const themeId = this.getAttribute('data-theme-id');
+                                        const secId = this.getAttribute('data-section-id');
+                                        applyTheme(secId, themeId);
+                                    });
+                                });
+                            }
+                        }
+                        return;
+                    }
+                    
+                    // Toggle dropdown visibility
+                    // Close all other dropdowns first
+                    document.querySelectorAll('.theme-dropdown.show').forEach(el => {
+                        if (el.id !== dropdown.id) {
+                            el.classList.remove('show');
+                        }
+                    });
+                    
+                    // Toggle current dropdown
+                    dropdown.classList.toggle('show');
+                    console.log('Toggled dropdown, show class is now:', dropdown.classList.contains('show'));
+                }
+                
+                // Handle theme dropdown item clicks
+                if (e.target && e.target.matches('.theme-dropdown-item[data-theme-id]')) {
+                    e.stopPropagation();
+                    const themeId = e.target.getAttribute('data-theme-id');
+                    const sectionId = e.target.getAttribute('data-section-id');
+                    if (themeId && sectionId) {
+                        applyTheme(sectionId, themeId);
+                    }
+                }
+            });
+        });
     </script>
 </body>
 </html> 
