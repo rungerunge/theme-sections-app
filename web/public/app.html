@@ -260,21 +260,21 @@
             background-color: white;
             border-radius: 4px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            z-index: 100;
+            z-index: 1000;
             max-height: 250px;
             overflow-y: auto;
             display: none;
             top: 100%;
             margin-top: 4px;
-            transform: translateY(0);
             transition: all 0.3s ease;
             opacity: 0;
             border: 1px solid #e5e7eb;
+            pointer-events: none;
         }
         .theme-dropdown.show {
             display: block;
             opacity: 1;
-            transform: translateY(0);
+            pointer-events: all;
         }
         .theme-dropdown-header {
             padding: 12px 16px;
@@ -744,6 +744,11 @@
         
         function renderMySections(mySections) {
             const mySectionsContainer = document.getElementById('my-sections-container');
+            if (!mySectionsContainer) {
+                console.error('My sections container not found');
+                return;
+            }
+            
             mySectionsContainer.innerHTML = '';
 
             if (!mySections || mySections.length === 0) {
@@ -765,7 +770,28 @@
                 
                 // Get title and preview URL, with fallbacks
                 const title = section.title || section.name || 'Unnamed Section';
-                const previewUrl = section.previewUrl || '/section-preview/' + section.id;
+                
+                // Fix image path handling with better fallbacks
+                let previewUrl;
+                if (section.previewUrl) {
+                    previewUrl = section.previewUrl;
+                } else if (section.id) {
+                    previewUrl = `/section-previews/${section.id}/preview.png`;
+                    sectionCard.style.backgroundColor = '#f4f6f8';
+                } else {
+                    previewUrl = '/section-previews/default.png';
+                }
+                
+                const dropdownId = `dropdown-my-${section.id}`;
+                
+                // Prepare theme options HTML
+                const themeOptions = !availableThemes || availableThemes.length === 0 
+                    ? '<div class="theme-dropdown-item">No themes available</div>'
+                    : availableThemes.map(theme => `
+                        <div class="theme-dropdown-item" data-theme-id="${theme.id}" data-section-id="${section.id}">
+                            ${theme.name} ${theme.role === 'main' ? '(Live)' : ''}
+                        </div>
+                    `).join('');
                 
                 sectionCard.innerHTML = `
                     <div class="section-preview" style="background-image: url('${previewUrl}')"></div>
@@ -781,17 +807,10 @@
                             <button class="btn btn-outline-danger btn-sm mb-2" onclick="removeFromMySections('${section.id}')">Remove</button>
                             <div class="theme-btn-container">
                                 <button class="btn-add-to-theme" data-section-id="${section.id}">Add to Theme</button>
-                                <div class="theme-dropdown" id="dropdown-my-${section.id}">
+                                <div class="theme-dropdown" id="${dropdownId}">
                                     <div class="theme-dropdown-header">Select Theme</div>
                                     <div class="theme-dropdown-items">
-                                        ${!availableThemes || availableThemes.length === 0 
-                                          ? '<div class="theme-dropdown-item">No themes available</div>'
-                                          : availableThemes.map(theme => `
-                                              <div class="theme-dropdown-item" data-theme-id="${theme.id}" data-section-id="${section.id}">
-                                                ${theme.name} ${theme.role === 'main' ? '(Live)' : ''}
-                                              </div>
-                                            `).join('')
-                                        }
+                                        ${themeOptions}
                                     </div>
                                 </div>
                             </div>
@@ -805,35 +824,44 @@
             
             mySectionsContainer.appendChild(sectionGrid);
 
-            // Add event listeners for theme dropdown toggle
-            document.querySelectorAll('.btn-add-to-theme').forEach(button => {
-                button.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    const sectionId = this.getAttribute('data-section-id');
-                    const dropdown = document.getElementById(`dropdown-my-${sectionId}`);
-                    
-                    if (!dropdown) return;
-                    
-                    // Close all other dropdowns first
-                    document.querySelectorAll('.theme-dropdown.show').forEach(el => {
-                        if (el.id !== dropdown.id) {
-                            el.classList.remove('show');
+            // Add event listeners for dropdowns after appending to DOM
+            setTimeout(() => {
+                // Event listeners for theme dropdown toggle
+                document.querySelectorAll('.btn-add-to-theme').forEach(button => {
+                    button.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        const sectionId = this.getAttribute('data-section-id');
+                        console.log('Add to Theme clicked for section:', sectionId);
+                        const dropdown = document.getElementById(`dropdown-my-${sectionId}`);
+                        
+                        console.log('Found dropdown:', dropdown);
+                        if (!dropdown) {
+                            console.error('Dropdown not found for section:', sectionId);
+                            return;
                         }
+                        
+                        // Close all other dropdowns first
+                        document.querySelectorAll('.theme-dropdown.show').forEach(el => {
+                            if (el.id !== dropdown.id) {
+                                el.classList.remove('show');
+                            }
+                        });
+                        
+                        // Toggle current dropdown
+                        dropdown.classList.toggle('show');
+                        console.log('Toggled dropdown, show class is now:', dropdown.classList.contains('show'));
                     });
-                    
-                    // Toggle current dropdown
-                    dropdown.classList.toggle('show');
                 });
-            });
-            
-            // Add event listeners for theme selection
-            document.querySelectorAll('.theme-dropdown-item[data-theme-id]').forEach(item => {
-                item.addEventListener('click', function(e) {
-                    const themeId = this.getAttribute('data-theme-id');
-                    const sectionId = this.getAttribute('data-section-id');
-                    applyTheme(sectionId, themeId);
+                
+                // Add event listeners for theme selection
+                document.querySelectorAll('.theme-dropdown-item[data-theme-id]').forEach(item => {
+                    item.addEventListener('click', function(e) {
+                        const themeId = this.getAttribute('data-theme-id');
+                        const sectionId = this.getAttribute('data-section-id');
+                        applyTheme(sectionId, themeId);
+                    });
                 });
-            });
+            }, 100);
 
             // Close dropdowns when clicking outside
             document.addEventListener('click', function(e) {
@@ -1113,8 +1141,8 @@
             });
             
             // Close all dropdowns
-            document.querySelectorAll('.theme-dropdown-content.active').forEach(dropdown => {
-                dropdown.classList.remove('active');
+            document.querySelectorAll('.theme-dropdown.show').forEach(dropdown => {
+                dropdown.classList.remove('show');
             });
         }
     </script>
