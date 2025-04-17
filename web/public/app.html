@@ -481,20 +481,21 @@
         
         // Initialize
         document.addEventListener('DOMContentLoaded', async function() {
+            console.log('DOM Content Loaded - initializing app');
+            
             // First fetch themes
-            await fetchThemes()
-                .then(() => {
-                    console.log('Themes loaded successfully, now loading sections');
-                    // Then load sections after themes are available
-                    loadSections();
-                    loadMySections();
-                })
-                .catch(error => {
-                    console.error('Failed to load themes, but will still try to load sections:', error);
-                    // Still try to load sections even if themes failed
-                    loadSections();
-                    loadMySections();
-                });
+            try {
+                console.log('Fetching themes...');
+                await fetchThemes();
+                console.log('Themes loaded, now loading sections');
+                loadSections();
+                loadMySections();
+            } catch (error) {
+                console.error('Failed to load themes:', error);
+                console.log('Still trying to load sections even if themes failed');
+                loadSections();
+                loadMySections();
+            }
             
             // Check query params for tab
             const urlParams = new URLSearchParams(window.location.search);
@@ -592,7 +593,7 @@
         }
         
         function renderExploreSections(sectionsData) {
-            const sectionsContainer = document.getElementById('explore-sections-container');
+            const sectionsContainer = document.getElementById('explore-sections');
             sectionsContainer.innerHTML = '';
 
             if (!sectionsData || sectionsData.length === 0) {
@@ -652,24 +653,41 @@
         
         function loadSections() {
             // Show loading state
-            document.getElementById('explore-sections-container').innerHTML = 
+            document.getElementById('explore-sections').innerHTML = 
                 '<div class="loading-state">Loading sections library...</div>';
             
             // Fetch sections from API
+            console.log('Fetching sections from API...');
             fetch('/api/sections')
                 .then(response => {
+                    console.log('API response status:', response.status);
                     if (!response.ok) {
-                        throw new Error('Failed to fetch sections');
+                        return response.json().then(errorData => {
+                            console.error('Error response details:', errorData);
+                            throw new Error(`Failed to fetch sections: ${errorData.message || response.statusText}`);
+                        });
                     }
                     return response.json();
                 })
                 .then(data => {
-                    renderExploreSections(data);
+                    console.log('Sections data received:', data);
+                    if (!data || !Array.isArray(data) || data.length === 0) {
+                        console.warn('No sections returned from API');
+                        document.getElementById('explore-sections').innerHTML = 
+                            '<div class="empty-state">No sections available. Please add section folders to your app.</div>';
+                        return;
+                    }
+                    
+                    // Update the global sections array
+                    sections = data;
+                    
+                    // Render the sections
+                    renderExploreSections(sections);
                 })
                 .catch(error => {
                     console.error('Error loading sections:', error);
-                    document.getElementById('explore-sections-container').innerHTML = 
-                        '<div class="error-state">Error loading sections. Please try again later.</div>';
+                    document.getElementById('explore-sections').innerHTML = 
+                        `<div class="error-state">Error loading sections: ${error.message}. Please try again later.</div>`;
                 });
         }
         

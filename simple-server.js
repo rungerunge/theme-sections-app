@@ -249,75 +249,140 @@ app.get('/api/sections', (req, res) => {
     
     // Get the list of sections from the sections directory
     const sectionsDir = path.join(process.cwd(), 'sections');
+    logMessage(`Looking for sections in directory: ${sectionsDir}`);
+    
+    if (!fs.existsSync(sectionsDir)) {
+      logMessage(`Sections directory does not exist: ${sectionsDir}`, true);
+      return res.status(404).json({
+        error: 'Sections directory not found',
+        message: 'The sections directory could not be found',
+        path: sectionsDir
+      });
+    }
+    
+    // Check if directory is readable
+    try {
+      fs.accessSync(sectionsDir, fs.constants.R_OK);
+      logMessage('Sections directory is readable');
+    } catch (error) {
+      logMessage(`Sections directory is not readable: ${error.message}`, true);
+      return res.status(500).json({
+        error: 'Permission error',
+        message: 'Cannot read sections directory',
+        path: sectionsDir
+      });
+    }
+    
+    // Get directory contents
+    const dirContents = fs.readdirSync(sectionsDir);
+    logMessage(`Directory contents: ${dirContents.join(', ')}`);
+    
     const sections = [];
     
-    if (fs.existsSync(sectionsDir)) {
-      const sectionDirs = fs.readdirSync(sectionsDir);
-      
-      for (const sectionDir of sectionDirs) {
-        // Skip hidden directories or files
-        if (sectionDir.startsWith('.')) continue;
-        
-        const sectionPath = path.join(sectionsDir, sectionDir);
-        const sectionStats = fs.statSync(sectionPath);
-        
-        // Skip if not a directory
-        if (!sectionStats.isDirectory()) continue;
-        
-        // Check if section.liquid exists
-        const sectionFilePath = path.join(sectionPath, 'section.liquid');
-        if (!fs.existsSync(sectionFilePath)) continue;
-        
-        // Get preview image if it exists
-        let previewUrl = null;
-        const previewPngPath = path.join(sectionPath, 'preview.png');
-        const previewJpgPath = path.join(sectionPath, 'preview.jpg');
-        const previewSvgPath = path.join(sectionPath, 'preview.svg');
-        
-        if (fs.existsSync(previewPngPath)) {
-          previewUrl = `/section-previews/${sectionDir}/preview.png`;
-        } else if (fs.existsSync(previewJpgPath)) {
-          previewUrl = `/section-previews/${sectionDir}/preview.jpg`;
-        } else if (fs.existsSync(previewSvgPath)) {
-          previewUrl = `/section-previews/${sectionDir}/preview.svg`;
-        } else {
-          // Use a default preview image
-          previewUrl = '/section-previews/default.png';
-        }
-        
-        // Try to get metadata from a meta.json file if it exists
-        let metadata = {};
-        const metaFilePath = path.join(sectionPath, 'meta.json');
-        if (fs.existsSync(metaFilePath)) {
-          try {
-            const metaContent = fs.readFileSync(metaFilePath, 'utf8');
-            metadata = JSON.parse(metaContent);
-          } catch (error) {
-            logMessage(`Error parsing metadata for section ${sectionDir}: ${error.message}`, true);
-          }
-        }
-        
-        // Add the section to the list
-        sections.push({
-          id: sectionDir,
-          title: metadata.title || sectionDir,
-          description: metadata.description || `A ${sectionDir} section for your store`,
-          previewUrl: previewUrl,
-          price: metadata.price || 'Free',
-          categories: metadata.categories || ['general']
-        });
+    for (const sectionDir of dirContents) {
+      // Skip hidden directories or files
+      if (sectionDir.startsWith('.')) {
+        logMessage(`Skipping hidden directory: ${sectionDir}`);
+        continue;
       }
+      
+      const sectionPath = path.join(sectionsDir, sectionDir);
+      logMessage(`Processing section path: ${sectionPath}`);
+      
+      // Check if path is a directory
+      let sectionStats;
+      try {
+        sectionStats = fs.statSync(sectionPath);
+      } catch (error) {
+        logMessage(`Error getting stats for ${sectionPath}: ${error.message}`, true);
+        continue;
+      }
+      
+      // Skip if not a directory
+      if (!sectionStats.isDirectory()) {
+        logMessage(`Skipping non-directory: ${sectionPath}`);
+        continue;
+      }
+      
+      // Check if section.liquid exists
+      const sectionFilePath = path.join(sectionPath, 'section.liquid');
+      logMessage(`Looking for section file: ${sectionFilePath}`);
+      
+      if (!fs.existsSync(sectionFilePath)) {
+        logMessage(`Section file not found: ${sectionFilePath}`);
+        continue;
+      }
+      
+      logMessage(`Found valid section: ${sectionDir}`);
+      
+      // Get preview image if it exists
+      let previewUrl = null;
+      const previewPngPath = path.join(sectionPath, 'preview.png');
+      const previewJpgPath = path.join(sectionPath, 'preview.jpg');
+      const previewSvgPath = path.join(sectionPath, 'preview.svg');
+      
+      if (fs.existsSync(previewPngPath)) {
+        previewUrl = `/section-previews/${sectionDir}/preview.png`;
+        logMessage(`Using PNG preview: ${previewUrl}`);
+      } else if (fs.existsSync(previewJpgPath)) {
+        previewUrl = `/section-previews/${sectionDir}/preview.jpg`;
+        logMessage(`Using JPG preview: ${previewUrl}`);
+      } else if (fs.existsSync(previewSvgPath)) {
+        previewUrl = `/section-previews/${sectionDir}/preview.svg`;
+        logMessage(`Using SVG preview: ${previewUrl}`);
+      } else {
+        // Use a default preview image
+        previewUrl = `/section-preview/${sectionDir}`;
+        logMessage(`Using default preview endpoint: ${previewUrl}`);
+      }
+      
+      // Try to get metadata from a meta.json file if it exists
+      let metadata = {};
+      const metaFilePath = path.join(sectionPath, 'meta.json');
+      if (fs.existsSync(metaFilePath)) {
+        try {
+          const metaContent = fs.readFileSync(metaFilePath, 'utf8');
+          metadata = JSON.parse(metaContent);
+          logMessage(`Loaded metadata for ${sectionDir}`);
+        } catch (error) {
+          logMessage(`Error parsing metadata for section ${sectionDir}: ${error.message}`, true);
+        }
+      } else {
+        logMessage(`No metadata file found for ${sectionDir}, using defaults`);
+      }
+      
+      // Generate categories if none provided
+      const categories = metadata.categories || ['general'];
+      if (sectionDir.includes('hero')) categories.push('hero');
+      if (sectionDir.includes('testimonial')) categories.push('testimonial');
+      if (sectionDir.includes('feature')) categories.push('features');
+      if (sectionDir.includes('video')) categories.push('video');
+      if (sectionDir.includes('faq')) categories.push('faq');
+      
+      // Add the section to the list
+      sections.push({
+        id: sectionDir,
+        title: metadata.title || sectionDir.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        description: metadata.description || `A ${sectionDir.replace(/-/g, ' ')} section for your store`,
+        previewUrl: previewUrl,
+        price: metadata.price || 'Free',
+        categories: categories
+      });
+      
+      logMessage(`Added section to API response: ${sectionDir}`);
     }
     
     // Return the list of sections
-    logMessage(`Found ${sections.length} sections: ${sections.map(s => s.id).join(', ')}`);
+    logMessage(`Returning ${sections.length} sections: ${sections.map(s => s.id).join(', ')}`);
     return res.status(200).json(sections);
     
   } catch (error) {
     logMessage(`Error fetching sections: ${error.message}`, true);
+    logMessage(error.stack || 'No stack trace available', true);
     return res.status(500).json({
       error: 'Server error',
-      message: error.message
+      message: error.message,
+      stack: error.stack
     });
   }
 });
