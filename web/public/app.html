@@ -276,6 +276,7 @@
             border: 1px solid #e5e7eb;
             pointer-events: none;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            width: 100%;
         }
         .theme-dropdown.visible {
             display: block;
@@ -294,21 +295,56 @@
             padding: 6px 0;
         }
         .theme-dropdown-item {
-            padding: 10px 16px;
+            padding: 8px 12px;
             cursor: pointer;
-            transition: background-color 0.2s;
-            font-size: 14px;
+            border-bottom: 1px solid #f0f0f0;
         }
         .theme-dropdown-item:hover {
-            background-color: #f3f4f6;
+            background-color: #f8f9fa;
         }
         .theme-dropdown-item.active {
-            background-color: #f3f4f6;
-            color: #4f46e5;
+            background-color: #e9ecef;
+            font-weight: bold;
         }
         .theme-dropdown-fix {
             position: fixed;
             z-index: 10000 !important;
+        }
+        .status-indicator {
+            display: none;
+            margin-top: 8px;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        .status-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status-loading {
+            background-color: #e9ecef;
+            color: #495057;
+            border: 1px solid #ced4da;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .spinner-sm {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(0, 0, 0, 0.1);
+            border-top-color: #007bff;
+            border-radius: 50%;
+            animation: spinner 0.6s linear infinite;
+        }
+        @keyframes spinner {
+            to {transform: rotate(360deg);}
         }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -787,14 +823,17 @@
                     previewUrl = '/section-previews/default.png';
                 }
                 
-                const dropdownId = `dropdown-my-${section.id}`;
+                const dropdownId = `theme-dropdown-${section.id}`;
                 
                 // Prepare theme options HTML
                 const themeOptions = !availableThemes || availableThemes.length === 0 
                     ? '<div class="theme-dropdown-item">No themes available</div>'
                     : availableThemes.map(theme => `
-                        <div class="theme-dropdown-item" data-theme-id="${theme.id}" data-section-id="${section.id}">
-                            ${theme.name} ${theme.role === 'main' ? '(Live)' : ''}
+                        <div class="theme-dropdown-item" 
+                             data-theme-id="${theme.id}" 
+                             data-theme-name="${theme.name}"
+                             onclick="selectTheme('${section.id}', '${theme.id}', '${theme.name}')">
+                            ${theme.name} ${theme.role === 'main' ? '(live)' : ''}
                         </div>
                     `).join('');
                 
@@ -805,20 +844,23 @@
                         <p class="section-description">${section.description || ''}</p>
                         <div class="section-tags">
                             ${Array.isArray(section.categories) ? 
-                                section.categories.map(cat => `<span class="section-tag">${cat}</span>`).join('') : 
-                                '<span class="section-tag">general</span>'}
+                              section.categories.map(cat => `<span class="section-tag">${cat}</span>`).join('') : 
+                              '<span class="section-tag">general</span>'}
                         </div>
                         <div class="section-actions">
-                            <button class="btn btn-outline-danger btn-sm mb-2" onclick="removeFromMySections('${section.id}')">Remove</button>
                             <div class="theme-btn-container">
-                                <button class="btn-add-to-theme" data-section-id="${section.id}">Add to Theme</button>
-                                <div class="theme-dropdown" id="${dropdownId}">
+                                <button id="theme-btn-${section.id}" class="btn-add-section" onclick="toggleThemeDropdown('${dropdownId}')">
+                                    Add to Theme
+                                </button>
+                                <div id="${dropdownId}" class="theme-dropdown">
                                     <div class="theme-dropdown-header">Select Theme</div>
-                                    <div class="theme-dropdown-items">
-                                        ${themeOptions}
-                                    </div>
+                                    ${themeOptions}
                                 </div>
+                                <div class="status-indicator"></div>
                             </div>
+                            <button class="btn-remove-section" onclick="removeFromMySections('${section.id}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
                         </div>
                     </div>
                 `;
@@ -828,54 +870,6 @@
             });
             
             mySectionsContainer.appendChild(sectionGrid);
-
-            // Add event listeners for dropdowns after appending to DOM
-            setTimeout(() => {
-                // Event listeners for theme dropdown toggle
-                document.querySelectorAll('.btn-add-to-theme').forEach(button => {
-                    button.addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        const sectionId = this.getAttribute('data-section-id');
-                        console.log('Add to Theme clicked for section:', sectionId);
-                        const dropdown = document.getElementById(`dropdown-my-${sectionId}`);
-                        
-                        console.log('Found dropdown:', dropdown);
-                        if (!dropdown) {
-                            console.error('Dropdown not found for section:', sectionId);
-                            return;
-                        }
-                        
-                        // Close all other dropdowns first
-                        document.querySelectorAll('.theme-dropdown.show').forEach(el => {
-                            if (el.id !== dropdown.id) {
-                                el.classList.remove('show');
-                            }
-                        });
-                        
-                        // Toggle current dropdown
-                        dropdown.classList.toggle('show');
-                        console.log('Toggled dropdown, show class is now:', dropdown.classList.contains('show'));
-                    });
-                });
-                
-                // Add event listeners for theme selection
-                document.querySelectorAll('.theme-dropdown-item[data-theme-id]').forEach(item => {
-                    item.addEventListener('click', function(e) {
-                        const themeId = this.getAttribute('data-theme-id');
-                        const sectionId = this.getAttribute('data-section-id');
-                        applyTheme(sectionId, themeId);
-                    });
-                });
-            }, 100);
-
-            // Close dropdowns when clicking outside
-            document.addEventListener('click', function(e) {
-                if (!e.target.closest('.theme-btn-container')) {
-                    document.querySelectorAll('.theme-dropdown.show').forEach(dropdown => {
-                        dropdown.classList.remove('show');
-                    });
-                }
-            });
         }
         
         function loadMySections() {
@@ -954,79 +948,65 @@
             showNotification(`Removed section from My Sections`, 'success');
         }
         
-        function addSectionToTheme(sectionId) {
-            // Show theme dropdown
-            const dropdown = document.getElementById(`dropdown-${sectionId}`);
+        function addSectionToTheme(sectionId, themeId) {
+            // Get button element for status updates
+            const button = event.target;
+            const statusContainer = button.closest('.section-card').querySelector('.status-indicator');
             
-            // Toggle dropdown
-            if (dropdown.classList.contains('show')) {
-                dropdown.classList.remove('show');
-            } else {
-                // Hide all other dropdowns first
-                document.querySelectorAll('.theme-dropdown.show').forEach(el => {
-                    if (el.id !== `dropdown-${sectionId}`) {
-                        el.classList.remove('show');
-                    }
-                });
-                dropdown.classList.add('show');
-            }
-        }
-        
-        // Add event listeners for theme dropdown items
-        document.addEventListener('click', function(event) {
-            // Close dropdowns when clicking outside
-            if (!event.target.closest('.theme-btn-container') && !event.target.classList.contains('btn-add-to-theme')) {
-                document.querySelectorAll('.theme-dropdown.show').forEach(el => {
-                    el.classList.remove('show');
-                });
-            }
+            // Show loading state
+            statusContainer.className = 'status-indicator status-loading';
+            statusContainer.innerHTML = '<div class="spinner-sm"></div> Adding section to theme...';
+            statusContainer.style.display = 'block';
             
-            // Handle theme selection
-            if (event.target.classList.contains('theme-dropdown-item')) {
-                const themeId = event.target.getAttribute('data-theme-id');
-                const sectionId = event.target.getAttribute('data-section-id');
-                
-                // Show loading state
-                const button = document.querySelector(`button.btn-add-to-theme[data-section-id="${sectionId}"]`);
-                const originalText = button.textContent;
-                button.textContent = 'Adding...';
-                button.disabled = true;
-                
-                // Hide dropdown
-                const dropdown = event.target.closest('.theme-dropdown');
-                dropdown.classList.remove('show');
-                
-                // Send request to add section
-                fetch('/api/sections/install', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        sectionId: sectionId,
-                        shop: connectedStore,
-                        themeId: themeId
-                    }),
+            // Disable button during request
+            button.disabled = true;
+            
+            console.log(`Adding section ${sectionId} to theme ${themeId}`);
+            
+            fetch('/api/sections/install', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    sectionId: sectionId,
+                    themeId: themeId
                 })
-                .then(response => response.json())
-                .then(data => {
-                    button.textContent = originalText;
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(errorData => {
+                        throw new Error(errorData.message || 'Failed to add section to theme');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Section added successfully:', data);
+                statusContainer.className = 'status-indicator status-success';
+                statusContainer.textContent = 'Section added to theme successfully!';
+                
+                // Re-enable button after success
+                setTimeout(() => {
                     button.disabled = false;
                     
-                    if (data.success) {
-                        showNotification(`Added "${sectionId}" to theme: ${data.themeName}`, 'success');
-                    } else {
-                        showNotification(data.message || 'Failed to add section', 'error');
-                    }
-                })
-                .catch(error => {
-                    button.textContent = originalText;
+                    // Hide status after 3 seconds
+                    setTimeout(() => {
+                        statusContainer.style.display = 'none';
+                    }, 3000);
+                }, 1000);
+            })
+            .catch(error => {
+                console.error('Error adding section to theme:', error);
+                statusContainer.className = 'status-indicator status-error';
+                statusContainer.textContent = `Error: ${error.message}`;
+                
+                // Re-enable button after error
+                setTimeout(() => {
                     button.disabled = false;
-                    showNotification('Error adding section to theme', 'error');
-                    console.error('Error:', error);
-                });
-            }
-        });
+                }, 1000);
+            });
+        }
         
         function filterSections() {
             const searchTerm = searchInput.value.toLowerCase();
@@ -1134,253 +1114,106 @@
             const theme = availableThemes.find(t => t.id === themeId);
             const themeName = theme ? theme.name : 'Selected theme';
             
-            // Show loading notification
-            showNotification(`Adding section to ${themeName}...`, 'info');
+            // Call the function to add the section to the theme
+            addSectionToTheme(sectionId, themeId);
+        }
+
+        // Function to toggle theme dropdown visibility
+        function toggleThemeDropdown(dropdownId) {
+            const dropdown = document.getElementById(dropdownId);
+            if (!dropdown) return;
             
-            // Make API call to apply section to theme
-            fetch('/api/apply-section', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    sectionId: sectionId,
-                    themeId: themeId
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showNotification(`Section added to ${themeName}`, 'success');
-                } else {
-                    showNotification(data.message || 'Failed to add section to theme', 'error');
+            // Close all other open dropdowns first
+            document.querySelectorAll('.theme-dropdown.visible').forEach(openDropdown => {
+                if (openDropdown.id !== dropdownId) {
+                    openDropdown.classList.remove('visible');
                 }
-            })
-            .catch(error => {
-                console.error('Error applying theme:', error);
-                showNotification('Error adding section to theme', 'error');
             });
             
-            // Close all dropdowns
-            document.querySelectorAll('.theme-dropdown.show').forEach(dropdown => {
-                dropdown.classList.remove('show');
+            // Also close any old-style .show dropdowns
+            document.querySelectorAll('.theme-dropdown.show').forEach(openDropdown => {
+                openDropdown.classList.remove('show');
             });
+            
+            // Toggle this dropdown
+            dropdown.classList.toggle('visible');
+            
+            // Handle click outside to close dropdown
+            if (dropdown.classList.contains('visible')) {
+                setTimeout(() => {
+                    window.addEventListener('click', function closeDropdown(e) {
+                        if (!dropdown.contains(e.target) && e.target.id !== `theme-btn-${dropdownId.split('-')[2]}`) {
+                            dropdown.classList.remove('visible');
+                            window.removeEventListener('click', closeDropdown);
+                        }
+                    });
+                }, 10);
+            }
+        }
+
+        // Function to select a theme
+        function selectTheme(sectionId, themeId, themeName) {
+            const dropdown = document.getElementById(`theme-dropdown-${sectionId}`);
+            if (!dropdown) return;
+            
+            // Update the button text to show selected theme
+            const button = document.getElementById(`theme-btn-${sectionId}`);
+            if (button) {
+                button.textContent = `Add to ${themeName}`;
+                button.dataset.themeId = themeId;
+                button.dataset.themeName = themeName;
+                
+                // Update onclick handler
+                button.onclick = function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    addSectionToTheme(sectionId, themeId);
+                };
+            }
+            
+            // Mark the selected theme as active in the dropdown
+            const items = dropdown.querySelectorAll('.theme-dropdown-item');
+            items.forEach(item => {
+                if (item.dataset.themeId === themeId) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+            
+            // Hide the dropdown
+            dropdown.classList.remove('visible');
         }
 
         // Fix the structure of static Add to Theme buttons when the page loads
         document.addEventListener("DOMContentLoaded", function() {
-            // Add CSS directly to handle any static theme dropdowns
+            // Make sure .visible works for dropdown visibility
             const fixDropdownsStyle = document.createElement('style');
             fixDropdownsStyle.textContent = `
-                .btn-add-to-theme {
-                    position: relative;
-                }
-                .theme-dropdown {
-                    position: absolute !important;
-                    top: 100% !important;
-                    left: 0 !important;
-                    width: 100% !important;
-                    z-index: 9999 !important;
-                }
-                .theme-dropdown.show {
+                .theme-dropdown.visible {
                     display: block !important;
                     opacity: 1 !important;
+                    pointer-events: auto !important;
                 }
-                .theme-btn-container {
-                    position: relative !important;
-                    width: 100% !important;
+                .theme-dropdown {
+                    max-height: 200px !important;
+                    overflow-y: auto !important;
                 }
             `;
             document.head.appendChild(fixDropdownsStyle);
             
-            // Process all static Add to Theme buttons to ensure proper structure
-            const staticButtons = Array.from(document.querySelectorAll('.btn-add-to-theme'));
-            console.log('Found static Add to Theme buttons:', staticButtons.length);
-            
-            staticButtons.forEach((button, index) => {
-                // Find section info from context
-                const card = button.closest('.section-card');
-                if (!card) {
-                    console.log('Button not in a section card:', button);
-                    return;
+            // Load themes first
+            fetchThemes().then(() => {
+                // Re-render any existing sections to use the new dropdown system
+                if (mySections && mySections.length > 0) {
+                    renderMySections(mySections);
                 }
                 
-                const titleEl = card.querySelector('.section-title');
-                const title = titleEl ? titleEl.textContent.trim() : null;
-                console.log(`Button ${index} title:`, title);
-                
-                // Find the section from globals or create an ID
-                let sectionId = '';
-                
-                // Try to find in mySections
-                const section = title 
-                    ? mySections.find(s => (s.title === title || s.name === title))
-                    : null;
-                
-                if (section) {
-                    sectionId = section.id;
-                    console.log(`Found section ID ${sectionId} for button with title ${title}`);
-                } else {
-                    // Create a fallback ID
-                    sectionId = title 
-                        ? title.toLowerCase().replace(/[^\w]+/g, '-')
-                        : `section-${index}`;
-                    console.log(`Created fallback ID ${sectionId} for button with title ${title}`);
-                }
-                
-                // Set the data attribute
-                button.setAttribute('data-section-id', sectionId);
-                
-                // Ensure button is in a theme-btn-container
-                if (!button.closest('.theme-btn-container')) {
-                    console.log(`Wrapping button for ${sectionId} in theme-btn-container`);
-                    
-                    const container = document.createElement('div');
-                    container.className = 'theme-btn-container';
-                    
-                    // Insert container before button and move button inside
-                    button.parentNode.insertBefore(container, button);
-                    container.appendChild(button);
-                    
-                    // Create a hidden dropdown that will be shown when needed
-                    const dropdown = document.createElement('div');
-                    dropdown.className = 'theme-dropdown';
-                    dropdown.id = `dropdown-my-${sectionId}`;
-                    dropdown.style.cssText = 'position: absolute; width: 100%; z-index: 9999;';
-                    
-                    // Add dropdown content with placeholder
-                    dropdown.innerHTML = `
-                        <div class="theme-dropdown-header">Select Theme</div>
-                        <div class="theme-dropdown-items">
-                            <div class="theme-dropdown-item">Loading themes...</div>
-                        </div>
-                    `;
-                    
-                    // Add to container
-                    container.appendChild(dropdown);
-                }
-            });
-            
-            // Handle all Add to Theme button clicks throughout the document
-            document.body.addEventListener('click', function(e) {
-                // Debug what was clicked
-                if (e.target.matches('.btn-add-to-theme')) {
-                    console.log('Add to Theme button clicked directly:', e.target);
-                }
-                
-                // Check if clicked element is an Add to Theme button
-                if (e.target && (e.target.matches('.btn-add-to-theme') || e.target.closest('.btn-add-to-theme'))) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    
-                    // Get the section ID from the button's data attribute
-                    const button = e.target.matches('.btn-add-to-theme') ? e.target : e.target.closest('.btn-add-to-theme');
-                    if (!button) return;
-                    
-                    const sectionId = button.getAttribute('data-section-id');
-                    if (!sectionId) {
-                        console.error('Button does not have a data-section-id attribute:', button);
-                        
-                        // Try to find the section element and get its ID
-                        const card = button.closest('.section-card');
-                        const title = card?.querySelector('.section-title')?.textContent;
-                        const section = title ? mySections.find(s => s.title === title || s.name === title) : null;
-                        
-                        if (section) {
-                            console.log('Found section by title:', section);
-                            button.setAttribute('data-section-id', section.id);
-                            console.log('Assigned section ID:', section.id);
-                            // Now proceed with the newly set ID
-                        } else {
-                            console.error('Could not determine section ID');
-                            return;
-                        }
-                    }
-                    
-                    console.log('Add to Theme clicked for section (global handler):', sectionId);
-                    
-                    // Find or create dropdown
-                    let dropdown = document.getElementById(`dropdown-my-${sectionId}`);
-                    
-                    // If dropdown doesn't exist, create it
-                    if (!dropdown) {
-                        console.log('Creating new dropdown for section:', sectionId);
-                        
-                        // Find the container for the dropdown
-                        const container = button.closest('.theme-btn-container') || button.parentElement;
-                        if (!container) {
-                            console.error('Could not find container for dropdown');
-                            return;
-                        }
-                        
-                        // Create a theme-btn-container if needed
-                        let btnContainer = button.closest('.theme-btn-container');
-                        if (!btnContainer) {
-                            console.log('Creating theme-btn-container');
-                            btnContainer = document.createElement('div');
-                            btnContainer.className = 'theme-btn-container';
-                            
-                            // Replace the button with the container
-                            button.parentElement.replaceChild(btnContainer, button);
-                            btnContainer.appendChild(button);
-                        }
-                        
-                        // Create new dropdown
-                        const newDropdown = document.createElement('div');
-                        newDropdown.id = `dropdown-my-${sectionId}`;
-                        newDropdown.className = 'theme-dropdown';
-                        newDropdown.style.cssText = 'position: absolute; width: 100%; z-index: 9999;';
-                        
-                        // Create dropdown content
-                        const options = !availableThemes || availableThemes.length === 0 
-                            ? '<div class="theme-dropdown-item">No themes available</div>'
-                            : availableThemes.map(theme => `
-                                <div class="theme-dropdown-item" data-theme-id="${theme.id}" data-section-id="${sectionId}">
-                                    ${theme.name} ${theme.role === 'main' ? '(Live)' : ''}
-                                </div>
-                            `).join('');
-                        
-                        newDropdown.innerHTML = `
-                            <div class="theme-dropdown-header">Select Theme</div>
-                            <div class="theme-dropdown-items">
-                                ${options}
-                            </div>
-                        `;
-                        
-                        // Add the dropdown to the container
-                        btnContainer.appendChild(newDropdown);
-                        dropdown = newDropdown;
-                        
-                        console.log('Created dropdown:', dropdown);
-                    }
-                    
-                    // Now show the dropdown
-                    // First close all other dropdowns
-                    document.querySelectorAll('.theme-dropdown.show').forEach(el => {
-                        if (el.id !== dropdown.id) {
-                            el.classList.remove('show');
-                        }
-                    });
-                    
-                    // Toggle current dropdown
-                    dropdown.classList.toggle('show');
-                    console.log('Dropdown visibility:', dropdown.classList.contains('show'));
-                    
-                    // Make dropdown visible by force if needed
-                    if (dropdown.classList.contains('show')) {
-                        dropdown.style.display = 'block';
-                    }
-                }
-                
-                // Handle theme dropdown item clicks
-                if (e.target && e.target.matches('.theme-dropdown-item[data-theme-id]')) {
-                    e.stopPropagation();
-                    const themeId = e.target.getAttribute('data-theme-id');
-                    const sectionId = e.target.getAttribute('data-section-id');
-                    if (themeId && sectionId) {
-                        applyTheme(sectionId, themeId);
-                    }
-                }
+                // Load all sections
+                loadSections();
+            }).catch(error => {
+                console.error('Error initializing app:', error);
+                showNotification('Error loading themes', 'error');
             });
         });
     </script>
