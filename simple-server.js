@@ -37,6 +37,111 @@ const PRIVATE_APP_TOKENS = {
   // Add more stores and their tokens as needed
 };
 
+// Define persistent storage path for sections
+const RENDER_PERSISTENT_DIR = process.env.RENDER_INTERNAL_RESOURCES_DIR;
+let persistentSectionsDir = null;
+
+if (RENDER_PERSISTENT_DIR) {
+  persistentSectionsDir = path.join(RENDER_PERSISTENT_DIR, 'sections');
+  logMessage(`Using persistent storage for sections at: ${persistentSectionsDir}`);
+  ensureDir(persistentSectionsDir);
+}
+
+// Function to save section to persistent storage
+function saveSectionToPersistentStorage(sectionId) {
+  if (!persistentSectionsDir) return;
+  
+  try {
+    const sectionDir = path.join(__dirname, 'sections', sectionId);
+    const persistentSectionDir = path.join(persistentSectionsDir, sectionId);
+    
+    if (!fs.existsSync(sectionDir)) {
+      logMessage(`Section directory not found: ${sectionDir}`, true);
+      return;
+    }
+    
+    // Create persistent section directory
+    ensureDir(persistentSectionDir);
+    
+    // Copy all files from section directory to persistent storage
+    const files = fs.readdirSync(sectionDir);
+    for (const file of files) {
+      const srcPath = path.join(sectionDir, file);
+      const destPath = path.join(persistentSectionDir, file);
+      
+      if (fs.statSync(srcPath).isFile()) {
+        fs.copyFileSync(srcPath, destPath);
+        logMessage(`Copied ${srcPath} to persistent storage`);
+      }
+    }
+    
+    logMessage(`Section ${sectionId} saved to persistent storage`);
+  } catch (error) {
+    logMessage(`Error saving section to persistent storage: ${error.message}`, true);
+  }
+}
+
+// Function to load sections from persistent storage
+function loadSectionsFromPersistentStorage() {
+  if (!persistentSectionsDir || !fs.existsSync(persistentSectionsDir)) {
+    logMessage('No persistent sections storage found');
+    return;
+  }
+  
+  try {
+    const sectionDirs = fs.readdirSync(persistentSectionsDir).filter(
+      dir => fs.statSync(path.join(persistentSectionsDir, dir)).isDirectory()
+    );
+    
+    logMessage(`Found ${sectionDirs.length} sections in persistent storage`);
+    
+    for (const sectionId of sectionDirs) {
+      const persistentSectionDir = path.join(persistentSectionsDir, sectionId);
+      const localSectionDir = path.join(__dirname, 'sections', sectionId);
+      
+      // Skip if section already exists locally
+      if (fs.existsSync(localSectionDir)) {
+        logMessage(`Section ${sectionId} already exists locally, skipping`);
+        continue;
+      }
+      
+      // Create local section directory
+      ensureDir(localSectionDir);
+      
+      // Copy all files from persistent storage to local directory
+      const files = fs.readdirSync(persistentSectionDir);
+      for (const file of files) {
+        const srcPath = path.join(persistentSectionDir, file);
+        const destPath = path.join(localSectionDir, file);
+        
+        if (fs.statSync(srcPath).isFile()) {
+          fs.copyFileSync(srcPath, destPath);
+          logMessage(`Copied ${file} from persistent storage for section ${sectionId}`);
+        }
+      }
+      
+      // Also copy preview images to web public directory if they exist
+      const extensions = ['.png', '.jpg', '.jpeg', '.svg', '.gif'];
+      for (const ext of extensions) {
+        const previewPath = path.join(persistentSectionDir, `preview${ext}`);
+        if (fs.existsSync(previewPath)) {
+          ensureDir(path.join(__dirname, 'web', 'public', 'section-previews'));
+          const publicPreviewPath = path.join(__dirname, 'web', 'public', 'section-previews', `${sectionId}${ext}`);
+          fs.copyFileSync(previewPath, publicPreviewPath);
+          logMessage(`Copied preview image to public directory for section ${sectionId}`);
+        }
+      }
+      
+      logMessage(`Loaded section ${sectionId} from persistent storage`);
+    }
+  } catch (error) {
+    logMessage(`Error loading sections from persistent storage: ${error.message}`, true);
+  }
+}
+
+// Load sections from persistent storage on startup
+loadSectionsFromPersistentStorage();
+
 // Log server start
 logMessage('Starting Express server...');
 logMessage('Current working directory: ' + process.cwd());
@@ -1100,6 +1205,9 @@ app.post('/api/sections/upload', (req, res) => {
       logMessage(`Saved preview image for ${sectionId}`);
     }
 
+    // Save to persistent storage if available
+    saveSectionToPersistentStorage(sectionId);
+
     res.json({ 
       success: true, 
       message: 'Section uploaded successfully'
@@ -1201,6 +1309,9 @@ app.put('/api/sections/:sectionId', (req, res) => {
       logMessage(`Updated preview image for ${sectionId}`);
     }
 
+    // Save to persistent storage if available
+    saveSectionToPersistentStorage(sectionId);
+
     res.json({ 
       success: true, 
       message: 'Section updated successfully'
@@ -1217,27 +1328,53 @@ app.put('/api/sections/:sectionId', (req, res) => {
 
 // API endpoint for deleting a section
 app.delete('/api/sections/:sectionId', (req, res) => {
-  // Check admin token
-  const adminToken = req.headers.authorization?.split(' ')[1];
+  // Check admin token from query parameter
+  const adminToken = req.query.adminToken;
   if (adminToken !== 'okayscale') {
     return res.status(401).json({ success: false, error: 'Unauthorized' });
   }
 
   try {
     const { sectionId } = req.params;
-    const sectionDir = path.join(__dirname, 'data', 'sections', sectionId);
+    const sectionDir = path.join(__dirname, 'sections', sectionId);
+    
+    logMessage(`Attempting to delete section: ${sectionId} from ${sectionDir}`);
     
     if (!fs.existsSync(sectionDir)) {
       return res.status(404).json({ success: false, error: 'Section not found' });
     }
 
+    // Remove preview images from web/public folder too
+    const extensions = ['.png', '.jpg', '.jpeg', '.svg', '.gif'];
+    for (const ext of extensions) {
+      const publicPreviewPath = path.join(__dirname, 'web', 'public', 'section-previews', `${sectionId}${ext}`);
+      if (fs.existsSync(publicPreviewPath)) {
+        try {
+          fs.unlinkSync(publicPreviewPath);
+          logMessage(`Deleted public preview image: ${publicPreviewPath}`);
+        } catch (err) {
+          logMessage(`Error deleting public preview: ${err.message}`, true);
+        }
+      }
+    }
+
     // Remove section directory and all its contents
     fs.rmSync(sectionDir, { recursive: true, force: true });
+    logMessage(`Successfully deleted section directory: ${sectionDir}`);
+
+    // Also remove from persistent storage if available
+    if (persistentSectionsDir) {
+      const persistentSectionDir = path.join(persistentSectionsDir, sectionId);
+      if (fs.existsSync(persistentSectionDir)) {
+        fs.rmSync(persistentSectionDir, { recursive: true, force: true });
+        logMessage(`Removed section ${sectionId} from persistent storage`);
+      }
+    }
 
     res.json({ success: true, message: 'Section deleted successfully' });
   } catch (error) {
-    console.error('Error deleting section:', error);
-    res.status(500).json({ success: false, error: 'Failed to delete section' });
+    logMessage(`Error deleting section: ${error.message}`, true);
+    res.status(500).json({ success: false, error: 'Failed to delete section', details: error.message });
   }
 });
 
