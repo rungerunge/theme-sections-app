@@ -242,144 +242,86 @@ app.get('/api/themes', async (req, res) => {
 // API endpoint for fetching available sections
 app.get('/api/sections', (req, res) => {
   try {
-    logMessage('Received request to /api/sections');
-    
-    // Get the list of sections from the sections directory
-    const sectionsDir = path.join(process.cwd(), 'sections');
-    logMessage(`Looking for sections in directory: ${sectionsDir}`);
-    
-    if (!fs.existsSync(sectionsDir)) {
-      logMessage(`Sections directory does not exist: ${sectionsDir}`, true);
-      return res.status(404).json({
-        error: 'Sections directory not found',
-        message: 'The sections directory could not be found',
-        path: sectionsDir
-      });
-    }
-    
-    // Check if directory is readable
-    try {
-      fs.accessSync(sectionsDir, fs.constants.R_OK);
-      logMessage('Sections directory is readable');
-    } catch (error) {
-      logMessage(`Sections directory is not readable: ${error.message}`, true);
-      return res.status(500).json({
-        error: 'Permission error',
-        message: 'Cannot read sections directory',
-        path: sectionsDir
-      });
-    }
-    
-    // Get directory contents
-    const dirContents = fs.readdirSync(sectionsDir);
-    logMessage(`Directory contents: ${dirContents.join(', ')}`);
-    
+    const sectionsPath = path.join(__dirname, 'sections');
+    ensureDir(sectionsPath);
+
+    const sectionDirs = fs.readdirSync(sectionsPath).filter(
+      dir => fs.statSync(path.join(sectionsPath, dir)).isDirectory()
+    );
+
     const sections = [];
-    
-    for (const sectionDir of dirContents) {
-      // Skip hidden directories or files
-      if (sectionDir.startsWith('.')) {
-        logMessage(`Skipping hidden directory: ${sectionDir}`);
-        continue;
+
+    for (const sectionDir of sectionDirs) {
+      const sectionPath = path.join(sectionsPath, sectionDir);
+      
+      // Load metadata
+      let metadata = {};
+      const metaPath = path.join(sectionPath, 'meta.json');
+      
+      if (fs.existsSync(metaPath)) {
+        try {
+          metadata = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+        } catch (error) {
+          logMessage(`Error reading metadata for ${sectionDir}: ${error.message}`, true);
+        }
+      } else {
+        logMessage(`No metadata found for ${sectionDir}`, true);
       }
       
-      const sectionPath = path.join(sectionsDir, sectionDir);
-      logMessage(`Processing section path: ${sectionPath}`);
-      
-      // Check if path is a directory
-      let sectionStats;
-      try {
-        sectionStats = fs.statSync(sectionPath);
-      } catch (error) {
-        logMessage(`Error getting stats for ${sectionPath}: ${error.message}`, true);
-        continue;
+      if (!metadata.id) {
+        metadata.id = sectionDir;
       }
       
-      // Skip if not a directory
-      if (!sectionStats.isDirectory()) {
-        logMessage(`Skipping non-directory: ${sectionPath}`);
-        continue;
+      if (!metadata.categories) {
+        metadata.categories = ['general'];
       }
-      
-      // Check if section.liquid exists
-      const sectionFilePath = path.join(sectionPath, 'section.liquid');
-      logMessage(`Looking for section file: ${sectionFilePath}`);
-      
-      if (!fs.existsSync(sectionFilePath)) {
-        logMessage(`Section file not found: ${sectionFilePath}`);
-        continue;
-      }
-      
-      logMessage(`Found valid section: ${sectionDir}`);
       
       // Get preview image if it exists
       let previewUrl = null;
-      const previewPngPath = path.join(sectionPath, 'preview.png');
-      const previewJpgPath = path.join(sectionPath, 'preview.jpg');
-      const previewSvgPath = path.join(sectionPath, 'preview.svg');
       
-      if (fs.existsSync(previewPngPath)) {
-        previewUrl = `/section-previews/${sectionDir}/preview.png`;
-        logMessage(`Using PNG preview: ${previewUrl}`);
-      } else if (fs.existsSync(previewJpgPath)) {
-        previewUrl = `/section-previews/${sectionDir}/preview.jpg`;
-        logMessage(`Using JPG preview: ${previewUrl}`);
-      } else if (fs.existsSync(previewSvgPath)) {
-        previewUrl = `/section-previews/${sectionDir}/preview.svg`;
-        logMessage(`Using SVG preview: ${previewUrl}`);
-      } else {
-        // Use a default preview image
+      // Try with any extension
+      const extensions = ['.png', '.jpg', '.jpeg', '.svg', '.gif'];
+      for (const ext of extensions) {
+        const previewPath = path.join(sectionPath, `preview${ext}`);
+        if (fs.existsSync(previewPath)) {
+          // Copy to web public dir if it doesn't exist there
+          const publicPreviewPath = path.join(__dirname, 'web', 'public', 'section-previews', `${sectionDir}${ext}`);
+          ensureDir(path.join(__dirname, 'web', 'public', 'section-previews'));
+          
+          if (!fs.existsSync(publicPreviewPath)) {
+            try {
+              fs.copyFileSync(previewPath, publicPreviewPath);
+            } catch (copyError) {
+              logMessage(`Error copying preview image: ${copyError.message}`, true);
+            }
+          }
+          
+          previewUrl = `/section-previews/${sectionDir}${ext}`;
+          logMessage(`Using ${ext.toUpperCase()} preview: ${previewUrl}`);
+          break;
+        }
+      }
+      
+      // If no preview image found, use the default preview endpoint
+      if (!previewUrl) {
         previewUrl = `/section-preview/${sectionDir}`;
         logMessage(`Using default preview endpoint: ${previewUrl}`);
       }
       
-      // Try to get metadata from a meta.json file if it exists
-      let metadata = {};
-      const metaFilePath = path.join(sectionPath, 'meta.json');
-      if (fs.existsSync(metaFilePath)) {
-        try {
-          const metaContent = fs.readFileSync(metaFilePath, 'utf8');
-          metadata = JSON.parse(metaContent);
-          logMessage(`Loaded metadata for ${sectionDir}`);
-        } catch (error) {
-          logMessage(`Error parsing metadata for section ${sectionDir}: ${error.message}`, true);
-        }
-      } else {
-        logMessage(`No metadata file found for ${sectionDir}, using defaults`);
-      }
-      
-      // Generate categories if none provided
-      const categories = metadata.categories || ['general'];
-      if (sectionDir.includes('hero')) categories.push('hero');
-      if (sectionDir.includes('testimonial')) categories.push('testimonial');
-      if (sectionDir.includes('feature')) categories.push('features');
-      if (sectionDir.includes('video')) categories.push('video');
-      if (sectionDir.includes('faq')) categories.push('faq');
-      
-      // Add the section to the list
       sections.push({
+        ...metadata,
         id: sectionDir,
-        title: metadata.title || sectionDir.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-        description: metadata.description || `A ${sectionDir.replace(/-/g, ' ')} section for your store`,
         previewUrl: previewUrl,
-        price: metadata.price || 'Free',
-        categories: categories
       });
-      
-      logMessage(`Added section to API response: ${sectionDir}`);
     }
     
-    // Return the list of sections
-    logMessage(`Returning ${sections.length} sections: ${sections.map(s => s.id).join(', ')}`);
-    return res.status(200).json(sections);
-    
+    res.json(sections);
   } catch (error) {
-    logMessage(`Error fetching sections: ${error.message}`, true);
-    logMessage(error.stack || 'No stack trace available', true);
-    return res.status(500).json({
-      error: 'Server error',
-      message: error.message,
-      stack: error.stack
+    logMessage(`Error getting sections: ${error.message}`, true);
+    res.status(500).json({
+      success: false,
+      error: 'Error loading sections',
+      details: error.message
     });
   }
 });
@@ -728,40 +670,48 @@ app.get('/auth/callback', async (req, res) => {
 
 // Serve section preview images
 app.get('/section-preview/:sectionId', (req, res) => {
-  const sectionId = req.params.sectionId;
+  const { sectionId } = req.params;
   logMessage(`Serving preview for section: ${sectionId}`);
   
-  // First check if an SVG exists in the web/public/section-previews directory
-  const svgPreviewPath = path.join(__dirname, 'web', 'public', 'section-previews', `${sectionId}.svg`);
-  const pngPreviewPath = path.join(__dirname, 'sections', sectionId, 'preview.png');
+  // Check for previews in multiple formats
+  const formats = [
+    { ext: '.png', contentType: 'image/png' },
+    { ext: '.jpg', contentType: 'image/jpeg' },
+    { ext: '.jpeg', contentType: 'image/jpeg' },
+    { ext: '.svg', contentType: 'image/svg+xml' },
+    { ext: '.gif', contentType: 'image/gif' }
+  ];
   
-  if (fs.existsSync(svgPreviewPath)) {
-    logMessage(`Found SVG preview at ${svgPreviewPath}`);
-    res.setHeader('Content-Type', 'image/svg+xml');
-    return res.sendFile(svgPreviewPath);
-  } else if (fs.existsSync(pngPreviewPath)) {
-    logMessage(`Found PNG preview at ${pngPreviewPath}`);
-    return res.sendFile(pngPreviewPath);
-  } else {
-    // Generate simple SVG as placeholder
-    logMessage(`No preview found for ${sectionId}, generating placeholder`);
-    
-    const sectionTitle = sectionId.split('-').map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1)
-    ).join(' ');
-    
-    const svgTemplate = `
-      <svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
-        <rect width="800" height="600" fill="#f8f8f8"/>
-        <rect x="50" y="50" width="700" height="500" rx="10" fill="#ffffff" stroke="#e0e0e0" stroke-width="2"/>
-        <text x="400" y="150" font-family="Arial, sans-serif" font-size="32" font-weight="bold" text-anchor="middle" fill="#333333">${sectionTitle}</text>
-        <text x="400" y="300" font-family="Arial, sans-serif" font-size="18" text-anchor="middle" fill="#666666">Preview coming soon</text>
-      </svg>
-    `;
-    
-    res.setHeader('Content-Type', 'image/svg+xml');
-    res.send(svgTemplate);
+  // First check in the public directory
+  for (const format of formats) {
+    const publicPreviewPath = path.join(__dirname, 'web', 'public', 'section-previews', `${sectionId}${format.ext}`);
+    if (fs.existsSync(publicPreviewPath)) {
+      logMessage(`Found ${format.ext.toUpperCase()} preview in public dir: ${publicPreviewPath}`);
+      return res.sendFile(publicPreviewPath);
+    }
   }
+  
+  // Then check in the section directory
+  for (const format of formats) {
+    const sectionPreviewPath = path.join(__dirname, 'sections', sectionId, `preview${format.ext}`);
+    if (fs.existsSync(sectionPreviewPath)) {
+      logMessage(`Found ${format.ext.toUpperCase()} preview in section dir: ${sectionPreviewPath}`);
+      return res.sendFile(sectionPreviewPath);
+    }
+  }
+  
+  // If no preview found, generate a placeholder SVG
+  logMessage(`No preview found for ${sectionId}, generating placeholder`);
+  res.setHeader('Content-Type', 'image/svg+xml');
+  res.send(`
+    <svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
+      <rect width="800" height="600" fill="#f8f9fa" />
+      <rect x="50" y="50" width="700" height="500" rx="5" ry="5" fill="#ffffff" stroke="#e9ecef" stroke-width="1" />
+      
+      <text x="400" y="200" font-family="Arial, sans-serif" font-size="24" text-anchor="middle" fill="#212529">${sectionId}</text>
+      <text x="400" y="300" font-family="Arial, sans-serif" font-size="18" text-anchor="middle" fill="#666666">Preview coming soon</text>
+    </svg>
+  `);
 });
 
 // Admin route
