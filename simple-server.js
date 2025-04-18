@@ -59,10 +59,14 @@ function ensureDir(dir) {
 const webPublicDir = path.join(__dirname, 'web', 'public');
 const sectionPreviewsDir = path.join(webPublicDir, 'section-previews');
 const sectionsDir = path.join(__dirname, 'sections');
+const dataDir = path.join(__dirname, 'data');
+const dataSectionsDir = path.join(dataDir, 'sections');
 
 ensureDir(webPublicDir);
 ensureDir(sectionPreviewsDir);
 ensureDir(sectionsDir);
+ensureDir(dataDir);
+ensureDir(dataSectionsDir);
 
 // Serve static files
 app.use('/section-previews', express.static(path.join(__dirname, 'web', 'public', 'section-previews')));
