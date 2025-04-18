@@ -998,13 +998,17 @@ app.get('/admin', (req, res) => {
                 '/api/sections/' + editingId + '?adminToken=okayscale' : 
                 '/api/sections/upload?adminToken=okayscale';
               
+              console.log('Submitting form to:', url);
               const response = await fetch(url, {
                 method: editingId ? 'PUT' : 'POST',
                 body: formData
               });
 
+              const result = await response.json();
+              
               if (!response.ok) {
-                throw new Error('Failed to save section');
+                console.error('Server error:', result);
+                throw new Error(result.error || 'Failed to save section');
               }
 
               hideForm();
@@ -1045,7 +1049,7 @@ app.get('/admin', (req, res) => {
 
 // API endpoint for uploading a new section
 app.post('/api/sections/upload', (req, res) => {
-  const adminToken = req.headers.authorization?.split(' ')[1];
+  const adminToken = req.query.adminToken;
   if (adminToken !== 'okayscale') {
     return res.status(401).json({ 
       success: false, 
@@ -1054,7 +1058,7 @@ app.post('/api/sections/upload', (req, res) => {
   }
 
   try {
-    const { sectionId, title, description } = req.body;
+    const { sectionId, title, description, categories } = req.body;
     if (!sectionId || !title) {
       return res.status(400).json({ 
         success: false, 
@@ -1062,33 +1066,88 @@ app.post('/api/sections/upload', (req, res) => {
       });
     }
 
-    const sectionDir = path.join(__dirname, 'data', 'sections', sectionId);
-    if (!fs.existsSync(sectionDir)) {
-      fs.mkdirSync(sectionDir, { recursive: true });
-    }
-
+    logMessage(`Creating new section: ${sectionId}`);
+    
+    // Create directories
+    const sectionDir = path.join(__dirname, 'sections', sectionId);
+    ensureDir(sectionDir);
+    
+    const categoriesArray = categories ? categories.split(',').map(c => c.trim()) : ['general'];
+    
+    // Create metadata
     const metadata = {
       id: sectionId,
       title: title,
       description: description || '',
+      categories: categoriesArray,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
 
+    // Save metadata to a meta.json file
     fs.writeFileSync(
-      path.join(sectionDir, 'metadata.json'), 
+      path.join(sectionDir, 'meta.json'), 
       JSON.stringify(metadata, null, 2)
     );
 
-    if (req.files?.section) {
-      const sectionFile = req.files.section;
+    // Save section file if provided
+    if (req.files?.sectionFile) {
+      const sectionFile = req.files.sectionFile;
       sectionFile.mv(path.join(sectionDir, 'section.liquid'));
+      logMessage(`Saved section file for ${sectionId}`);
+    } else {
+      // Create a default section file
+      const defaultSection = `{% comment %}
+  ${title} 
+  ${description || ''}
+{% endcomment %}
+
+<div class="${sectionId}">
+  <h2>{{ section.settings.heading }}</h2>
+  <div>{{ section.settings.content }}</div>
+</div>
+
+{% schema %}
+{
+  "name": "${title}",
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "${title}"
+    },
+    {
+      "type": "richtext",
+      "id": "content",
+      "label": "Content",
+      "default": "<p>${description || 'Add your content here'}</p>"
+    }
+  ],
+  "presets": [
+    {
+      "name": "${title}",
+      "category": "Custom"
+    }
+  ]
+}
+{% endschema %}`;
+
+      fs.writeFileSync(path.join(sectionDir, 'section.liquid'), defaultSection);
+      logMessage(`Created default section file for ${sectionId}`);
     }
 
-    if (req.files?.preview) {
-      const previewFile = req.files.preview;
+    // Save preview image if provided
+    if (req.files?.previewFile) {
+      const previewFile = req.files.previewFile;
       const ext = path.extname(previewFile.name);
       previewFile.mv(path.join(sectionDir, `preview${ext}`));
+      
+      // Also copy to web public directory for serving
+      ensureDir(path.join(__dirname, 'web', 'public', 'section-previews'));
+      previewFile.mv(path.join(__dirname, 'web', 'public', 'section-previews', `${sectionId}${ext}`));
+      
+      logMessage(`Saved preview image for ${sectionId}`);
     }
 
     res.json({ 
@@ -1096,17 +1155,18 @@ app.post('/api/sections/upload', (req, res) => {
       message: 'Section uploaded successfully'
     });
   } catch (error) {
-    console.error('Error uploading section:', error);
+    logMessage(`Error uploading section: ${error.message}`, true);
     res.status(500).json({ 
       success: false, 
-      error: 'Failed to upload section'
+      error: 'Failed to upload section',
+      details: error.message
     });
   }
 });
 
 // API endpoint for updating a section
 app.put('/api/sections/:sectionId', (req, res) => {
-  const adminToken = req.headers.authorization?.split(' ')[1];
+  const adminToken = req.query.adminToken;
   if (adminToken !== 'okayscale') {
     return res.status(401).json({ 
       success: false, 
@@ -1116,9 +1176,11 @@ app.put('/api/sections/:sectionId', (req, res) => {
 
   try {
     const { sectionId } = req.params;
-    const { title, description } = req.body;
+    const { title, description, categories } = req.body;
     
-    const sectionDir = path.join(__dirname, 'data', 'sections', sectionId);
+    logMessage(`Updating section: ${sectionId}`);
+    
+    const sectionDir = path.join(__dirname, 'sections', sectionId);
     if (!fs.existsSync(sectionDir)) {
       return res.status(404).json({ 
         success: false, 
@@ -1126,23 +1188,67 @@ app.put('/api/sections/:sectionId', (req, res) => {
       });
     }
 
-    const metadataPath = path.join(sectionDir, 'metadata.json');
-    const currentMetadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
-    const updatedMetadata = {
-      ...currentMetadata,
+    const categoriesArray = categories ? categories.split(',').map(c => c.trim()) : ['general'];
+    
+    // Create or update metadata
+    const metaPath = path.join(sectionDir, 'meta.json');
+    let metadata = {
+      id: sectionId,
       title: title,
-      description: description,
+      description: description || '',
+      categories: categoriesArray,
+      createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
+    
+    // Try to load existing metadata if it exists
+    try {
+      if (fs.existsSync(metaPath)) {
+        const currentMeta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+        metadata = {
+          ...currentMeta,
+          title: title,
+          description: description || currentMeta.description || '',
+          categories: categoriesArray,
+          updatedAt: new Date().toISOString()
+        };
+      }
+    } catch (metaError) {
+      logMessage(`Error reading existing metadata: ${metaError.message}`, true);
+    }
 
-    fs.writeFileSync(
-      metadataPath, 
-      JSON.stringify(updatedMetadata, null, 2)
-    );
+    // Save updated metadata
+    fs.writeFileSync(metaPath, JSON.stringify(metadata, null, 2));
+    logMessage(`Updated metadata for ${sectionId}`);
 
-    if (req.files?.section) {
-      const sectionFile = req.files.section;
+    // Update section file if provided
+    if (req.files?.sectionFile) {
+      const sectionFile = req.files.sectionFile;
       sectionFile.mv(path.join(sectionDir, 'section.liquid'));
+      logMessage(`Updated section file for ${sectionId}`);
+    }
+
+    // Update preview image if provided
+    if (req.files?.previewFile) {
+      const previewFile = req.files.previewFile;
+      const ext = path.extname(previewFile.name);
+      
+      // Remove old preview files if they exist
+      for (const ext of ['.png', '.jpg', '.svg', '.jpeg', '.gif']) {
+        const oldFile = path.join(sectionDir, `preview${ext}`);
+        if (fs.existsSync(oldFile)) {
+          fs.unlinkSync(oldFile);
+        }
+      }
+      
+      // Save new preview
+      previewFile.mv(path.join(sectionDir, `preview${ext}`));
+      
+      // Also update in web public directory
+      ensureDir(path.join(__dirname, 'web', 'public', 'section-previews'));
+      previewFile.mv(path.join(__dirname, 'web', 'public', 'section-previews', `${sectionId}${ext}`));
+      
+      logMessage(`Updated preview image for ${sectionId}`);
     }
 
     res.json({ 
@@ -1150,10 +1256,11 @@ app.put('/api/sections/:sectionId', (req, res) => {
       message: 'Section updated successfully'
     });
   } catch (error) {
-    console.error('Error updating section:', error);
+    logMessage(`Error updating section: ${error.message}`, true);
     res.status(500).json({ 
       success: false, 
-      error: 'Failed to update section'
+      error: 'Failed to update section',
+      details: error.message
     });
   }
 });
