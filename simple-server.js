@@ -1,10 +1,21 @@
 const express = require('express');
+const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const axios = require('axios');
+const fileUpload = require('express-fileupload');
 
 // Create Express app
 const app = express();
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(fileUpload({
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max file size
+  createParentPath: true
+}));
 
 // Define logging
 function logMessage(message, isError = false) {
@@ -12,24 +23,6 @@ function logMessage(message, isError = false) {
   const logPrefix = isError ? '[ERROR]' : '[INFO]';
   console.log(`${timestamp} ${logPrefix} ${message}`);
 }
-
-// Add CORS headers
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-  
-  next();
-});
-
-// Parse JSON requests
-app.use(express.json());
-// Parse URL-encoded form data
-app.use(express.urlencoded({ extended: true }));
 
 // Shopify API credentials
 const SHOPIFY_API_KEY = process.env.SHOPIFY_API_KEY;
@@ -764,6 +757,426 @@ app.get('/section-preview/:sectionId', (req, res) => {
     
     res.setHeader('Content-Type', 'image/svg+xml');
     res.send(svgTemplate);
+  }
+});
+
+// Admin route
+app.get('/admin', (req, res) => {
+  const adminToken = req.query.adminToken;
+  
+  if (adminToken !== 'okayscale') {
+    return res.send(`
+      <html>
+        <head>
+          <title>Admin Login</title>
+          <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        </head>
+        <body class="bg-light">
+          <div class="container mt-5">
+            <div class="row justify-content-center">
+              <div class="col-md-6">
+                <div class="card">
+                  <div class="card-header">
+                    <h4 class="mb-0">Admin Login</h4>
+                  </div>
+                  <div class="card-body">
+                    <form action="/admin" method="get">
+                      <div class="mb-3">
+                        <label for="adminToken" class="form-label">Admin Password</label>
+                        <input type="password" class="form-control" id="adminToken" name="adminToken" required>
+                      </div>
+                      <button type="submit" class="btn btn-primary">Login</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `);
+  }
+
+  // Admin interface
+  res.send(`
+    <html>
+      <head>
+        <title>Section Store Admin</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+      </head>
+      <body class="bg-light">
+        <div class="container mt-4">
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Section Store Admin</h2>
+            <div>
+              <button class="btn btn-success" onclick="showAddForm()">Add New Section</button>
+              <a href="/app" class="btn btn-outline-primary ms-2">View App</a>
+            </div>
+          </div>
+
+          <!-- Add/Edit Section Form -->
+          <div id="sectionForm" class="card mb-4" style="display: none;">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <h5 class="mb-0" id="formTitle">Add New Section</h5>
+              <button type="button" class="btn-close" onclick="hideForm()"></button>
+            </div>
+            <div class="card-body">
+              <form id="addEditForm" onsubmit="handleSubmit(event)">
+                <input type="hidden" id="editingId" name="editingId">
+                <div class="mb-3">
+                  <label for="sectionId" class="form-label">Section ID</label>
+                  <input type="text" class="form-control" id="sectionId" name="sectionId" required>
+                </div>
+                <div class="mb-3">
+                  <label for="title" class="form-label">Title</label>
+                  <input type="text" class="form-control" id="title" name="title" required>
+                </div>
+                <div class="mb-3">
+                  <label for="description" class="form-label">Description</label>
+                  <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
+                </div>
+                <div class="mb-3">
+                  <label for="categories" class="form-label">Categories (comma-separated)</label>
+                  <input type="text" class="form-control" id="categories" name="categories" required>
+                </div>
+                <div class="mb-3">
+                  <label for="sectionFile" class="form-label">Section File (section.liquid)</label>
+                  <input type="file" class="form-control" id="sectionFile" name="sectionFile" accept=".liquid">
+                </div>
+                <div class="mb-3">
+                  <label for="previewFile" class="form-label">Preview Image</label>
+                  <input type="file" class="form-control" id="previewFile" name="previewFile" accept="image/*">
+                </div>
+                <button type="submit" class="btn btn-primary">Save Section</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Sections List -->
+          <div class="card">
+            <div class="card-header">
+              <h5 class="mb-0">Available Sections</h5>
+            </div>
+            <div class="card-body">
+              <div id="sectionsList"></div>
+            </div>
+          </div>
+        </div>
+
+        <script>
+          // Load sections on page load
+          loadSections();
+
+          function loadSections() {
+            fetch('/api/sections')
+              .then(response => response.json())
+              .then(sections => {
+                const list = document.getElementById('sectionsList');
+                list.innerHTML = '';
+                
+                if (sections.length === 0) {
+                  list.innerHTML = '<div class="alert alert-info">No sections available</div>';
+                  return;
+                }
+
+                const table = document.createElement('table');
+                table.className = 'table table-striped';
+                
+                // Build the table header separately to avoid template literal issues
+                const thead = document.createElement('thead');
+                thead.innerHTML = '<tr><th>ID</th><th>Preview</th><th>Title</th><th>Description</th><th>Categories</th><th>Actions</th></tr>';
+                table.appendChild(thead);
+                
+                const tbody = document.createElement('tbody');
+                table.appendChild(tbody);
+
+                sections.forEach(section => {
+                  const row = document.createElement('tr');
+                  
+                  // ID cell
+                  const idCell = document.createElement('td');
+                  idCell.textContent = section.id;
+                  row.appendChild(idCell);
+                  
+                  // Preview cell
+                  const previewCell = document.createElement('td');
+                  if (section.previewUrl) {
+                    const img = document.createElement('img');
+                    img.src = section.previewUrl;
+                    img.alt = section.title;
+                    img.style.maxWidth = '100px';
+                    img.style.maxHeight = '75px';
+                    previewCell.appendChild(img);
+                  } else {
+                    const span = document.createElement('span');
+                    span.className = 'text-muted';
+                    span.textContent = 'No preview';
+                    previewCell.appendChild(span);
+                  }
+                  row.appendChild(previewCell);
+                  
+                  // Title cell
+                  const titleCell = document.createElement('td');
+                  titleCell.textContent = section.title;
+                  row.appendChild(titleCell);
+                  
+                  // Description cell
+                  const descCell = document.createElement('td');
+                  descCell.textContent = section.description;
+                  row.appendChild(descCell);
+                  
+                  // Categories cell
+                  const catCell = document.createElement('td');
+                  catCell.textContent = section.categories.join(', ');
+                  row.appendChild(catCell);
+                  
+                  // Actions cell
+                  const actionsCell = document.createElement('td');
+                  
+                  const editBtn = document.createElement('button');
+                  editBtn.className = 'btn btn-sm btn-primary';
+                  editBtn.textContent = 'Edit';
+                  editBtn.onclick = function() { editSection(section); };
+                  actionsCell.appendChild(editBtn);
+                  
+                  actionsCell.appendChild(document.createTextNode(' '));
+                  
+                  const deleteBtn = document.createElement('button');
+                  deleteBtn.className = 'btn btn-sm btn-danger';
+                  deleteBtn.textContent = 'Delete';
+                  deleteBtn.onclick = function() { deleteSection(section.id); };
+                  actionsCell.appendChild(deleteBtn);
+                  
+                  row.appendChild(actionsCell);
+                  
+                  tbody.appendChild(row);
+                });
+
+                list.appendChild(table);
+              })
+              .catch(error => {
+                console.error('Error loading sections:', error);
+                document.getElementById('sectionsList').innerHTML = 
+                  '<div class="alert alert-danger">Error loading sections</div>';
+              });
+          }
+
+          function showAddForm() {
+            document.getElementById('formTitle').textContent = 'Add New Section';
+            document.getElementById('sectionForm').style.display = 'block';
+            document.getElementById('editingId').value = '';
+            document.getElementById('addEditForm').reset();
+          }
+
+          function hideForm() {
+            document.getElementById('sectionForm').style.display = 'none';
+            document.getElementById('addEditForm').reset();
+          }
+
+          function editSection(section) {
+            document.getElementById('formTitle').textContent = 'Edit Section';
+            document.getElementById('sectionForm').style.display = 'block';
+            document.getElementById('editingId').value = section.id;
+            document.getElementById('sectionId').value = section.id;
+            document.getElementById('title').value = section.title;
+            document.getElementById('description').value = section.description;
+            document.getElementById('categories').value = section.categories.join(', ');
+          }
+
+          async function handleSubmit(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            const editingId = document.getElementById('editingId').value;
+            
+            try {
+              const url = editingId ? 
+                '/api/sections/' + editingId + '?adminToken=okayscale' : 
+                '/api/sections/upload?adminToken=okayscale';
+              
+              const response = await fetch(url, {
+                method: editingId ? 'PUT' : 'POST',
+                body: formData
+              });
+
+              if (!response.ok) {
+                throw new Error('Failed to save section');
+              }
+
+              hideForm();
+              loadSections();
+              alert(editingId ? 'Section updated successfully' : 'Section added successfully');
+            } catch (error) {
+              console.error('Error saving section:', error);
+              alert('Error saving section. Please try again.');
+            }
+          }
+
+          async function deleteSection(sectionId) {
+            if (!confirm('Are you sure you want to delete this section?')) {
+              return;
+            }
+
+            try {
+              const response = await fetch('/api/sections/' + sectionId + '?adminToken=okayscale', {
+                method: 'DELETE'
+              });
+
+              if (!response.ok) {
+                throw new Error('Failed to delete section');
+              }
+
+              loadSections();
+              alert('Section deleted successfully');
+            } catch (error) {
+              console.error('Error deleting section:', error);
+              alert('Error deleting section. Please try again.');
+            }
+          }
+        </script>
+      </body>
+    </html>
+  `);
+});
+
+// API endpoint for uploading a new section
+app.post('/api/sections/upload', (req, res) => {
+  const adminToken = req.headers.authorization?.split(' ')[1];
+  if (adminToken !== 'okayscale') {
+    return res.status(401).json({ 
+      success: false, 
+      error: 'Unauthorized'
+    });
+  }
+
+  try {
+    const { sectionId, title, description } = req.body;
+    if (!sectionId || !title) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Missing required fields'
+      });
+    }
+
+    const sectionDir = path.join(__dirname, 'data', 'sections', sectionId);
+    if (!fs.existsSync(sectionDir)) {
+      fs.mkdirSync(sectionDir, { recursive: true });
+    }
+
+    const metadata = {
+      id: sectionId,
+      title: title,
+      description: description || '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    fs.writeFileSync(
+      path.join(sectionDir, 'metadata.json'), 
+      JSON.stringify(metadata, null, 2)
+    );
+
+    if (req.files?.section) {
+      const sectionFile = req.files.section;
+      sectionFile.mv(path.join(sectionDir, 'section.liquid'));
+    }
+
+    if (req.files?.preview) {
+      const previewFile = req.files.preview;
+      const ext = path.extname(previewFile.name);
+      previewFile.mv(path.join(sectionDir, `preview${ext}`));
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Section uploaded successfully'
+    });
+  } catch (error) {
+    console.error('Error uploading section:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to upload section'
+    });
+  }
+});
+
+// API endpoint for updating a section
+app.put('/api/sections/:sectionId', (req, res) => {
+  const adminToken = req.headers.authorization?.split(' ')[1];
+  if (adminToken !== 'okayscale') {
+    return res.status(401).json({ 
+      success: false, 
+      error: 'Unauthorized'
+    });
+  }
+
+  try {
+    const { sectionId } = req.params;
+    const { title, description } = req.body;
+    
+    const sectionDir = path.join(__dirname, 'data', 'sections', sectionId);
+    if (!fs.existsSync(sectionDir)) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Section not found'
+      });
+    }
+
+    const metadataPath = path.join(sectionDir, 'metadata.json');
+    const currentMetadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+    const updatedMetadata = {
+      ...currentMetadata,
+      title: title,
+      description: description,
+      updatedAt: new Date().toISOString()
+    };
+
+    fs.writeFileSync(
+      metadataPath, 
+      JSON.stringify(updatedMetadata, null, 2)
+    );
+
+    if (req.files?.section) {
+      const sectionFile = req.files.section;
+      sectionFile.mv(path.join(sectionDir, 'section.liquid'));
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Section updated successfully'
+    });
+  } catch (error) {
+    console.error('Error updating section:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to update section'
+    });
+  }
+});
+
+// API endpoint for deleting a section
+app.delete('/api/sections/:sectionId', (req, res) => {
+  // Check admin token
+  const adminToken = req.headers.authorization?.split(' ')[1];
+  if (adminToken !== 'okayscale') {
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  try {
+    const { sectionId } = req.params;
+    const sectionDir = path.join(__dirname, 'data', 'sections', sectionId);
+    
+    if (!fs.existsSync(sectionDir)) {
+      return res.status(404).json({ success: false, error: 'Section not found' });
+    }
+
+    // Remove section directory and all its contents
+    fs.rmSync(sectionDir, { recursive: true, force: true });
+
+    res.json({ success: true, message: 'Section deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting section:', error);
+    res.status(500).json({ success: false, error: 'Failed to delete section' });
   }
 });
 
